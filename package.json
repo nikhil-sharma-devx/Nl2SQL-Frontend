@@ -1,0 +1,42 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "NL-to-SQL RAG Chatbot Frontend",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "react",
+    "typescript",
+    "nl-to-sql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-oauth/google": "^0.13.5",
+    "@tanstack/react-query": "^5.96.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@xyflow/react": "^12.11.0",
+    "axios": "^1.14.0",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^1.7.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.14.0",
+    "react-syntax-highlighter": "^16.1.1",
+    "recharts": "^2.12.7",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "puppeteer": "^25.1.0",
+    "tailwindcss": "^4.2.2"
+  }
+}
