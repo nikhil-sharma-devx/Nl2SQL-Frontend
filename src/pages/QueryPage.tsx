@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils';
 
 const QueryPage = () => {
   const {
-    currentSession,
     messages,
     question,
     setQuestion,

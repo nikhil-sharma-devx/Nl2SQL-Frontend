@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../api/client';
+import apiClient, { changePassword } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Separator } from '../../components/ui/separator';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Badge } from '../../components/ui/badge';
+import { handleApiError } from '../../api/client';
 
 interface LoginSession {
   id: string;
@@ -24,9 +28,71 @@ interface LoginActivity {
   created_at: string;
 }
 
+function ChangePasswordSection() {
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => changePassword(currentPw, newPw),
+    onSuccess: (data) => {
+      setStatus('success');
+      setMessage(data.message);
+      setCurrentPw('');
+      setNewPw('');
+      setTimeout(() => setStatus('idle'), 4000);
+    },
+    onError: (err) => {
+      setStatus('error');
+      setMessage(handleApiError(err));
+    },
+  });
+
+  const canSubmit = currentPw.length > 0 && newPw.length >= 8;
+
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold">Change Password</h3>
+      <div className="max-w-sm space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="current-pw">Current Password</Label>
+          <Input
+            id="current-pw"
+            type="password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="new-pw">New Password</Label>
+          <Input
+            id="new-pw"
+            type="password"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            autoComplete="new-password"
+            placeholder="Min 8 characters"
+          />
+        </div>
+        {status === 'success' && <p className="text-sm text-primary">{message}</p>}
+        {status === 'error' && <p className="text-sm text-destructive">{message}</p>}
+        <Button
+          onClick={() => mutation.mutate()}
+          disabled={!canSubmit || mutation.isPending}
+          size="sm"
+        >
+          {mutation.isPending ? 'Updating…' : 'Update Password'}
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 export default function SecuritySettings() {
   const queryClient = useQueryClient();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const { data: sessionsData, isLoading: sessionsLoading } = useQuery<{ items: LoginSession[] }>({
@@ -47,7 +113,6 @@ export default function SecuritySettings() {
   const revokeAllMutation = useMutation({
     mutationFn: () => apiClient.delete('/auth-sessions').then(r => r.data),
     onSuccess: async () => {
-      // Current session is also revoked — log out completely
       await logout();
       navigate('/auth');
     },
@@ -55,6 +120,14 @@ export default function SecuritySettings() {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      {/* Change Password — only for email/password accounts */}
+      {user?.auth_provider === 'email' && (
+        <>
+          <ChangePasswordSection />
+          <Separator />
+        </>
+      )}
+
       {/* Active Sessions */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">

@@ -11,6 +11,8 @@ export interface UserSettings {
   auto_execute: boolean;
   default_model: string | null;
   data_retention: 'forever' | '30d' | '7d' | 'none';
+  font_size: 'small' | 'medium' | 'large';
+  ui_density: 'compact' | 'comfortable' | 'spacious';
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -23,6 +25,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   auto_execute: false,
   default_model: null,
   data_retention: 'forever',
+  font_size: 'medium',
+  ui_density: 'comfortable',
 };
 
 export function useSettings() {

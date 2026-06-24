@@ -20,6 +20,8 @@ import {
   ChevronsUp,
   PanelLeftClose,
   PanelLeftOpen,
+  HelpCircle,
+  FileCode2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import ModelSwitcher from './ModelSwitcher';
@@ -27,7 +29,8 @@ import ThemeSwitcher from './ThemeSwitcher';
 import ProfileModal from './ProfileModal';
 import SettingsModal from './SettingsModal';
 import UsageModal from './UsageModal';
-import { getSessions } from '../api/client';
+import OnboardingChecklist from './OnboardingChecklist';
+import { getSessions, checkHealth } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +40,7 @@ const navItems = [
   { to: '/history', end: false, icon: Clock, label: 'History' },
   { to: '/analytics', end: false, icon: BarChart3, label: 'Analytics' },
   { to: '/saved', end: false, icon: Bookmark, label: 'Saved' },
+  { to: '/templates', end: false, icon: FileCode2, label: 'Templates' },
   { to: '/training', end: false, icon: BrainCircuit, label: 'Training' },
 ];
 
@@ -46,8 +50,10 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/history': { title: 'History', subtitle: 'Past sessions & conversations' },
   '/analytics': { title: 'Analytics', subtitle: 'Usage, accuracy & performance' },
   '/saved': { title: 'Saved Queries', subtitle: 'Your bookmarked SQL queries' },
+  '/templates': { title: 'Query Templates', subtitle: 'Parameterized SQL patterns' },
   '/settings': { title: 'Settings', subtitle: 'Preferences, privacy & security' },
   '/training': { title: 'Model Training', subtitle: 'Fine-tune on your query history' },
+  '/help': { title: 'Help', subtitle: 'Documentation, shortcuts & FAQ' },
 };
 
 interface SessionGroup {
@@ -174,6 +180,14 @@ const Layout = () => {
     retry: false,
   });
 
+  const { data: isHealthy = true } = useQuery({
+    queryKey: ['health'],
+    queryFn: checkHealth,
+    refetchInterval: 30_000,
+    retry: false,
+    staleTime: 20_000,
+  });
+
   const allSessions = sessionsData?.sessions ?? [];
 
   const filteredSessions = useMemo(
@@ -217,7 +231,7 @@ const Layout = () => {
       <aside
         style={{ width: computedWidth, minWidth: computedWidth }}
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex h-screen flex-col border-r border-border bg-card/90 backdrop-blur-2xl',
+          'fixed inset-y-0 left-0 z-40 flex h-screen flex-col border-r border-border/80 bg-card/88 backdrop-blur-2xl shadow-[4px_0_24px_-4px_rgba(0,0,0,0.4)]',
           'md:static',
           // Mobile: slide in/out
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -231,7 +245,7 @@ const Layout = () => {
           {!isIconMode && (
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary text-primary-foreground shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_24px_rgba(16,185,129,0.55),0_0_8px_rgba(16,185,129,0.3)] glow-primary-sm">
                   <TerminalSquare className="h-[18px] w-[18px]" strokeWidth={2.4} />
                 </div>
                 <div className="leading-tight">
@@ -274,7 +288,7 @@ const Layout = () => {
             ) : (
               <button
                 onClick={() => { navigate('/', { state: { newChat: true } }); setMobileOpen(false); }}
-                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-gradient-to-r from-primary/15 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:from-primary/25 hover:to-primary/20"
+                className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:shadow-[0_0_16px_rgba(16,185,129,0.15)]"
               >
                 <span className="flex items-center gap-2.5">
                   <SquarePen className="h-4 w-4 text-primary" />
@@ -358,7 +372,7 @@ const Layout = () => {
                       <>
                         {/* Active indicator — bar on left (expanded) or dot on bottom (collapsed) */}
                         {isActive && !isIconMode && (
-                          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-primary shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
+                          <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8),0_0_5px_rgba(16,185,129,0.5)]" />
                         )}
                         {isActive && isIconMode && (
                           <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
@@ -396,7 +410,7 @@ const Layout = () => {
                           <button
                             key={session.id}
                             onClick={() => handleSessionClick(session)}
-                            className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
+                            className="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
                           >
                             <MessagesSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/35 transition-colors group-hover:text-muted-foreground/60" />
                             <span className="truncate leading-snug">{session.title}</span>
@@ -413,6 +427,9 @@ const Layout = () => {
 
         {/* ── BOTTOM (fixed) ──────────────────────────────────── */}
         <div className="shrink-0 border-t border-border/60">
+          {/* Onboarding checklist (expanded only) */}
+          {!isIconMode && <OnboardingChecklist />}
+
           {/* Theme switcher (expanded only) */}
           {!isIconMode && (
             <div className="px-3 py-2">
@@ -451,6 +468,13 @@ const Layout = () => {
                   <BarChart3 size={15} className="text-primary" />
                   Usage
                 </button>
+                <button
+                  onClick={() => { setUserMenuOpen(false); navigate('/help'); }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground/90 transition-colors hover:bg-foreground/[0.06]"
+                >
+                  <HelpCircle size={15} className="text-primary" />
+                  Help &amp; Docs
+                </button>
                 <div className="mx-3 h-px bg-border" />
                 <button
                   id="btn-logout"
@@ -472,7 +496,7 @@ const Layout = () => {
               )}
               title={isIconMode ? (user?.full_name ?? user?.email ?? 'Profile') : undefined}
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary text-xs font-bold text-primary-foreground">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-emerald-400 text-xs font-bold text-primary-foreground shadow-[0_0_10px_rgba(16,185,129,0.4)]">
                 {(user?.full_name ?? user?.email ?? 'U')[0].toUpperCase()}
               </div>
               {!isIconMode && (
@@ -517,7 +541,7 @@ const Layout = () => {
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
       <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card/60 px-4 py-3.5 backdrop-blur-xl md:px-6">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/65 px-4 py-3.5 backdrop-blur-xl shadow-[0_4px_20px_-8px_rgba(0,0,0,0.4)] md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             {/* Mobile hamburger */}
             <button
@@ -538,7 +562,7 @@ const Layout = () => {
                 <PanelLeftOpen className="h-5 w-5" />
               </button>
             )}
-            <span className="h-7 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+            <span className="h-7 w-1.5 rounded-full bg-gradient-to-b from-primary to-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.7),0_0_6px_rgba(16,185,129,0.45)]" />
             <div className="min-w-0">
               <h2 className="truncate font-display text-base font-semibold tracking-tight text-foreground md:text-lg">
                 {meta.title}
@@ -546,7 +570,24 @@ const Layout = () => {
               <p className="hidden truncate text-xs text-muted-foreground sm:block">{meta.subtitle}</p>
             </div>
           </div>
-          <ModelSwitcher />
+          <div className="flex items-center gap-3">
+            <div
+              title={isHealthy ? 'Backend connected' : 'Backend unreachable'}
+              className="flex items-center gap-1.5"
+            >
+              <span
+                className={`h-2 w-2 rounded-full transition-colors ${
+                  isHealthy
+                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]'
+                    : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+                }`}
+              />
+              <span className="hidden font-mono text-[10px] text-muted-foreground/60 sm:block">
+                {isHealthy ? 'Connected' : 'Offline'}
+              </span>
+            </div>
+            <ModelSwitcher />
+          </div>
         </header>
 
         <main

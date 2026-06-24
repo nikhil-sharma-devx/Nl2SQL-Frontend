@@ -5,6 +5,11 @@
  *   - user / token state
  *   - login(), register(), googleLogin(), logout() actions
  *   - Automatically attaches Bearer token to every axios request
+ *
+ * Session persistence: both the token and user profile are stored in
+ * localStorage so a page refresh restores the session immediately without
+ * a round-trip. The token's `exp` claim is decoded client-side on startup —
+ * if it is expired the session is cleared before the first render completes.
  */
 import React, {
   createContext,
@@ -16,6 +21,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import apiClient from '../api/client';
+import { getToken as storedGetToken, setToken as storeSetToken } from '../auth/tokenStore';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,44 +39,97 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, fullName?: string) => Promise<void>;
+  register: (email: string, password: string, fullName?: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
   resendOTP: (email: string) => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Decode the JWT payload (no signature verification — server does that). */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // exp is in seconds; Date.now() is ms
+    return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // malformed token → treat as expired
+  }
+}
+
+/** Read the stored token and return it only if it hasn't expired yet. */
+function loadValidToken(): string | null {
+  const stored = storedGetToken();
+  if (!stored) return null;
+  if (isTokenExpired(stored)) {
+    storeSetToken(null); // evict expired token immediately
+    return null;
+  }
+  return stored;
+}
+
 // ── Context ───────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const TOKEN_KEY = 'nl2sql_token';
-const USER_KEY  = 'nl2sql_user';
-const _origin   = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-const API_BASE  = `${_origin}/api/v1`;
+const USER_KEY = 'nl2sql_user';
+const API_BASE = '/api/v1';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
-  const [user, setUser]   = useState<AuthUser | null>(() => {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  // Restore token from localStorage on first render (expired tokens are discarded).
+  const [token, setTokenState] = useState<string | null>(loadValidToken);
+
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      return raw ? (JSON.parse(raw) as AuthUser) : null;
+    } catch {
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // ── Persist + axios interceptor ──────────────────────────────────────────
-
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  // Keep the module-level store and axios header in sync with React state.
+  const setToken = useCallback((t: string | null) => {
+    setTokenState(t);
+    storeSetToken(t);
+    if (t) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${t}`;
     } else {
-      localStorage.removeItem(TOKEN_KEY);
       delete axios.defaults.headers.common['Authorization'];
     }
-  }, [token]);
+  }, []);
 
+  // On mount: if we restored a token from localStorage, wire the axios header
+  // and silently validate it with the server. If the server rejects it (e.g.
+  // the user was deactivated or the secret was rotated), clear the session.
+  useEffect(() => {
+    if (!token) return;
+
+    // Prime the axios header so the first API call in any component works.
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+    // Silent server-side validation — refresh user profile at the same time.
+    axios
+      .get<AuthUser>(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ data }) => {
+        setUser(data);
+      })
+      .catch(() => {
+        // Token was rejected (expired, revoked, or rotated secret) → log out.
+        setToken(null);
+        setUser(null);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on mount only
+
+  // Persist non-sensitive user profile to localStorage for instant restore on reload.
   useEffect(() => {
     if (user) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -84,9 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applyAuthResponse = useCallback((data: { access_token: string; user: AuthUser }) => {
     setToken(data.access_token);
     setUser(data.user);
-    // Immediately set for the current request cycle
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
-  }, []);
+  }, [setToken]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -151,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setToken(null);
     setUser(null);
-  }, []);
+  }, [setToken]);
 
   // ── Value ─────────────────────────────────────────────────────────────────
 

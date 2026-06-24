@@ -3,6 +3,45 @@ import { useSettings } from '../../hooks/useSettings';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { cn } from '@/lib/utils';
+
+function RadioGroup<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string; description?: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              'rounded-lg border px-3 py-1.5 text-sm font-medium transition-all',
+              value === opt.value
+                ? 'border-primary/50 bg-primary/15 text-primary'
+                : 'border-border bg-background/50 text-muted-foreground hover:text-foreground hover:border-border/80',
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {options.find(o => o.value === value)?.description && (
+        <p className="text-xs text-muted-foreground">{options.find(o => o.value === value)?.description}</p>
+      )}
+    </div>
+  );
+}
 
 export default function GeneralSettings() {
   const { settings, updateSettings, isSaving } = useSettings();
@@ -11,6 +50,8 @@ export default function GeneralSettings() {
     max_result_rows: settings.max_result_rows,
     auto_execute: settings.auto_execute,
     default_model: settings.default_model ?? '',
+    font_size: settings.font_size,
+    ui_density: settings.ui_density,
   });
 
   useEffect(() => {
@@ -19,8 +60,11 @@ export default function GeneralSettings() {
       max_result_rows: settings.max_result_rows,
       auto_execute: settings.auto_execute,
       default_model: settings.default_model ?? '',
+      font_size: settings.font_size,
+      ui_density: settings.ui_density,
     });
   }, [settings]);
+
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,6 +76,8 @@ export default function GeneralSettings() {
         max_result_rows: form.max_result_rows,
         auto_execute: form.auto_execute,
         default_model: form.default_model || null,
+        font_size: form.font_size,
+        ui_density: form.ui_density,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -82,6 +128,30 @@ export default function GeneralSettings() {
           placeholder="e.g. llama-3.3-70b-versatile"
         />
       </div>
+
+      <div className="h-px bg-border/50" />
+
+      <RadioGroup
+        label="Font Size"
+        value={form.font_size}
+        onChange={(v) => setForm(f => ({ ...f, font_size: v }))}
+        options={[
+          { value: 'small', label: 'Small', description: 'Compact text for dense layouts' },
+          { value: 'medium', label: 'Medium', description: 'Default comfortable reading size' },
+          { value: 'large', label: 'Large', description: 'Easier to read on high-DPI screens' },
+        ]}
+      />
+
+      <RadioGroup
+        label="UI Density"
+        value={form.ui_density}
+        onChange={(v) => setForm(f => ({ ...f, ui_density: v }))}
+        options={[
+          { value: 'compact', label: 'Compact', description: 'More content on screen at once' },
+          { value: 'comfortable', label: 'Comfortable', description: 'Balanced spacing (default)' },
+          { value: 'spacious', label: 'Spacious', description: 'Generous padding, easier to click' },
+        ]}
+      />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       {saved && <p className="text-sm text-primary">Settings saved.</p>}

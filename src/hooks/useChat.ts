@@ -240,6 +240,10 @@ export function useChat(): UseChatReturn {
         setValidationError('Question must be at least 3 characters long.');
         return;
       }
+      if (trimmed.length > 2000) {
+        setValidationError('Question too long (max 2000 characters).');
+        return;
+      }
       setValidationError(null);
       setRateLimitError(null);
 

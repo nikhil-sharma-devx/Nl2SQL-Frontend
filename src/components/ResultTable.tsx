@@ -2,13 +2,16 @@
  * ResultTable — renders the database result set as a paginated, sortable table.
  * (Logic unchanged; restyled.)
  */
-import { useState } from 'react';
-import { Play, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Play, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, Download } from 'lucide-react';
 import type { QueryResponse } from '../types/query.types';
 
 interface ResultTableProps {
   response: QueryResponse;
-  editedResult?: any;
+  editedResult?: {
+    results?: Record<string, unknown>[];
+    error?: string;
+  };
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -21,7 +24,7 @@ interface SortConfig {
 const ResultTable = ({ response, editedResult }: ResultTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-  const rowsPerPage = 10;
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
 
   const displayResult = editedResult?.results || response.execution_result;
   const displayError = editedResult?.error || response.execution_error;
@@ -55,7 +58,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
 
   const executionResult = displayResult;
 
-  const getSortedData = () => {
+  const sortedData = useMemo(() => {
     if (!sortConfig || !sortConfig.direction) {
       return executionResult;
     }
@@ -73,17 +76,37 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
       if (aStr > bStr) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  };
-
-  const sortedData = getSortedData();
+  }, [executionResult, sortConfig]);
   if (!sortedData || sortedData.length === 0) {
     return null;
   }
 
-  const totalPages = Math.ceil(sortedData.length / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
+  const effectiveRPP = rowsPerPage === 0 ? sortedData.length : rowsPerPage;
+  const totalPages = Math.ceil(sortedData.length / effectiveRPP);
+  const startIndex = (currentPage - 1) * effectiveRPP;
+  const endIndex = startIndex + effectiveRPP;
   const paginatedData = sortedData.slice(startIndex, endIndex);
+
+  const handleRowsPerPageChange = (val: string) => {
+    setRowsPerPage(val === 'all' ? 0 : Number(val));
+    setCurrentPage(1);
+  };
+
+  const exportCSV = () => {
+    const cols = Object.keys(sortedData[0]);
+    const escape = (v: unknown) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [cols.join(','), ...sortedData.map((row) => cols.map((c) => escape(row[c])).join(','))].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleSort = (column: string) => {
     let direction: SortDirection = 'asc';
@@ -111,10 +134,22 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
 
   return (
     <div className="mt-6">
-      <div className="mb-3 flex items-center gap-2">
-        <Play className="h-3.5 w-3.5 text-primary" />
-        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Execution Results</span>
-        <span className="font-mono text-[10px] text-muted-foreground/55">({executionResult.length} rows)</span>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Play className="h-3.5 w-3.5 text-primary" />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Execution Results</span>
+          <span className="font-mono text-[10px] text-muted-foreground/55">
+            ({executionResult.length} rows{response.response_time_ms ? ` · ${response.response_time_ms}ms` : ''})
+          </span>
+        </div>
+        <button
+          onClick={exportCSV}
+          title="Export to CSV"
+          className="flex items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
+        >
+          <Download className="h-3.5 w-3.5" />
+          CSV
+        </button>
       </div>
 
       <div className="overflow-x-auto custom-scrollbar rounded-xl border border-border bg-card/60 shadow-lg backdrop-blur-md">
@@ -156,11 +191,29 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between px-2">
-          <div className="font-mono text-[11px] text-muted-foreground/80">
-            Showing {startIndex + 1}-{Math.min(endIndex, sortedData.length)} of {sortedData.length} rows
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-2">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] text-muted-foreground/80">
+            {rowsPerPage === 0
+              ? `Showing all ${sortedData.length} rows`
+              : `Showing ${startIndex + 1}–${Math.min(endIndex, sortedData.length)} of ${sortedData.length} rows`}
+          </span>
+          <div className="flex items-center gap-1.5 rounded-md border border-border bg-background/60 px-2 py-1">
+            <span className="font-mono text-[10px] text-muted-foreground/70">Rows</span>
+            <select
+              value={rowsPerPage === 0 ? 'all' : String(rowsPerPage)}
+              onChange={(e) => handleRowsPerPageChange(e.target.value)}
+              className="cursor-pointer bg-transparent font-mono text-xs text-foreground focus:outline-none [&>option]:bg-popover"
+            >
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="all">All</option>
+            </select>
           </div>
+        </div>
+
+        {totalPages > 1 && (
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -204,8 +257,8 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
               Next
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { getToken } from '../auth/tokenStore';
 
 // Query types
 export interface QueryRequest {
@@ -150,22 +151,17 @@ export interface SessionListResponse {
   total: number;
 }
 
-// In production (Vercel) VITE_API_BASE_URL points to the AWS backend,
-// e.g. https://api.yourdomain.com — leave empty for local dev (proxy handles it).
-const _base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-export const API_ORIGIN = _base;
-
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: `${_base}/api/v1`,
+  baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Attach JWT token from localStorage to every request
+// Attach JWT token (in-memory) to every request
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('nl2sql_token');
+  const token = getToken();
   if (token) {
     config.headers = config.headers ?? {};
     config.headers['Authorization'] = `Bearer ${token}`;
@@ -180,8 +176,8 @@ apiClient.interceptors.request.use((config) => {
  */
 export const forceReauth = (): void => {
   try {
-    localStorage.removeItem('nl2sql_token');
     localStorage.removeItem('nl2sql_user');
+    localStorage.removeItem('nl2sql_token');
   } catch {
     // ignore storage errors
   }
@@ -249,13 +245,13 @@ export const streamQuery = async (
   onChunk: (chunk: any) => void,
   signal?: AbortSignal
 ): Promise<void> => {
-  const token = localStorage.getItem('nl2sql_token');
+  const token = getToken();
   const authHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await fetch(`${_base}/api/v1/query/stream`, {
+  const response = await fetch('/api/v1/query/stream', {
     method: 'POST',
     headers: authHeaders,
     body: JSON.stringify(req),
@@ -450,6 +446,15 @@ export interface AddMessageRequest {
 export const addSessionMessage = async (sessionId: string, req: AddMessageRequest): Promise<any> => {
   const response = await apiClient.post(`/sessions/${sessionId}/messages`, req);
   return response.data;
+};
+
+export const checkHealth = async (): Promise<boolean> => {
+  try {
+    await apiClient.get('/health', { timeout: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 // SQL Version Management functions
@@ -672,9 +677,9 @@ export const trainingAPI = {
     return r.data;
   },
   downloadData: async (format: 'json' | 'jsonl' = 'jsonl', limit = 1000): Promise<void> => {
-    const token = localStorage.getItem('nl2sql_token');
+    const token = getToken();
     const response = await fetch(
-      `${_base}/api/v1/training/download?format=${format}&limit=${limit}`,
+      `/api/v1/training/download?format=${format}&limit=${limit}`,
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     );
     if (!response.ok) throw new Error('Download failed');
@@ -770,6 +775,179 @@ export const exportHistoryFile = async (format: 'csv' | 'json'): Promise<Blob> =
 export const clearAllHistory = async (confirm: string) => {
   const r = await apiClient.post('/history/clear', { confirm });
   return r.data;
+};
+
+// ── Phase 2: Query Templates ──────────────────────────────────────────────────
+
+export interface TemplateParameter {
+  name: string;
+  type?: string;
+  description?: string;
+  default?: string;
+}
+
+export interface QueryTemplate {
+  id: number;
+  name: string;
+  description?: string;
+  template_nl: string;
+  template_sql: string;
+  parameters: TemplateParameter[];
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export const getTemplates = async (params?: { search?: string; limit?: number; offset?: number }) => {
+  const r = await apiClient.get('/query-templates', { params });
+  return r.data as { items: QueryTemplate[]; total: number };
+};
+
+export const createTemplate = async (d: {
+  name: string;
+  description?: string;
+  template_nl: string;
+  template_sql: string;
+  parameters?: TemplateParameter[];
+  tags?: string[];
+}) => {
+  const r = await apiClient.post('/query-templates', d);
+  return r.data as QueryTemplate;
+};
+
+export const updateTemplate = async (
+  id: number,
+  d: Partial<{ name: string; description: string; template_nl: string; template_sql: string; parameters: TemplateParameter[]; tags: string[] }>,
+) => {
+  const r = await apiClient.patch(`/query-templates/${id}`, d);
+  return r.data as QueryTemplate;
+};
+
+export const deleteTemplate = async (id: number) => {
+  await apiClient.delete(`/query-templates/${id}`);
+};
+
+export const renderTemplate = async (id: number, values: Record<string, string>) => {
+  const r = await apiClient.post(`/query-templates/${id}/render`, { values });
+  return r.data as { nl: string; sql: string; missing_params: string[] };
+};
+
+// ── Phase 2: Favorited Tables ─────────────────────────────────────────────────
+
+export interface FavoritedTable {
+  id: number;
+  table_name: string;
+  schema_name?: string;
+  note?: string;
+  created_at: string;
+}
+
+export const getFavoritedTables = async () => {
+  const r = await apiClient.get('/favorited-tables');
+  return r.data as FavoritedTable[];
+};
+
+export const pinTable = async (d: { table_name: string; schema_name?: string; note?: string }) => {
+  const r = await apiClient.post('/favorited-tables', d);
+  return r.data as FavoritedTable;
+};
+
+export const updatePinnedTable = async (id: number, note: string | null) => {
+  const r = await apiClient.patch(`/favorited-tables/${id}`, { note });
+  return r.data as FavoritedTable;
+};
+
+export const unpinTable = async (id: number) => {
+  await apiClient.delete(`/favorited-tables/${id}`);
+};
+
+// ── Phase 2: Glossary ─────────────────────────────────────────────────────────
+
+export interface GlossaryEntry {
+  id: number;
+  term: string;
+  definition: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getGlossary = async (search?: string) => {
+  const r = await apiClient.get('/glossary', { params: { search, limit: 50 } });
+  return r.data as { items: GlossaryEntry[]; total: number };
+};
+
+export const createGlossaryEntry = async (d: { term: string; definition: string }) => {
+  const r = await apiClient.post('/glossary', d);
+  return r.data as GlossaryEntry;
+};
+
+export const updateGlossaryEntry = async (id: number, d: { term?: string; definition?: string }) => {
+  const r = await apiClient.patch(`/glossary/${id}`, d);
+  return r.data as GlossaryEntry;
+};
+
+export const deleteGlossaryEntry = async (id: number) => {
+  await apiClient.delete(`/glossary/${id}`);
+};
+
+// ── Phase 2: Notifications ────────────────────────────────────────────────────
+
+export interface NotificationPrefs {
+  email_digest: boolean;
+  in_app_enabled: boolean;
+  marketing_enabled: boolean;
+}
+
+export const getNotificationPrefs = async () => {
+  const r = await apiClient.get('/notifications/preferences');
+  return r.data as NotificationPrefs;
+};
+
+export const updateNotificationPrefs = async (d: Partial<NotificationPrefs>) => {
+  const r = await apiClient.patch('/notifications/preferences', d);
+  return r.data as NotificationPrefs;
+};
+
+// ── Phase 2: Change Password ──────────────────────────────────────────────────
+
+export const changePassword = async (current_password: string, new_password: string) => {
+  const r = await apiClient.post('/auth/change-password', { current_password, new_password });
+  return r.data as { message: string };
+};
+
+// ── Phase 2: Tutorial & Onboarding ───────────────────────────────────────────
+
+export interface TutorialProgress {
+  completed_steps: string[];
+  available_steps: string[];
+  dismissed_at?: string;
+  is_complete: boolean;
+}
+
+export const getTutorialProgress = async () => {
+  const r = await apiClient.get('/tutorial');
+  return r.data as TutorialProgress;
+};
+
+export const patchTutorialProgress = async (d: { completed_steps?: string[]; dismissed?: boolean }) => {
+  const r = await apiClient.patch('/tutorial', d);
+  return r.data as TutorialProgress;
+};
+
+export interface OnboardingState {
+  completed_items: string[];
+  available_items: string[];
+  progress_pct: number;
+}
+
+export const getOnboarding = async () => {
+  const r = await apiClient.get('/onboarding');
+  return r.data as OnboardingState;
+};
+
+export const patchOnboarding = async (completed_items: string[]) => {
+  const r = await apiClient.patch('/onboarding', { completed_items });
+  return r.data as OnboardingState;
 };
 
 export default apiClient;

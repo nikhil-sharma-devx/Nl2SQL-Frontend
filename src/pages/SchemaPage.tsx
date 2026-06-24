@@ -13,6 +13,9 @@ import {
   EyeOff,
   Save,
   Link2,
+  Pin,
+  PinOff,
+  Plus,
 } from 'lucide-react';
 import {
   uploadSchema,
@@ -20,6 +23,11 @@ import {
   getDatabaseConfig,
   updateDatabaseConfig,
   refreshSchema,
+  getFavoritedTables,
+  pinTable,
+  unpinTable,
+  updatePinnedTable,
+  type FavoritedTable,
   type IngestResponse,
   type DatabaseConfig,
   type SchemaRefreshResponse,
@@ -30,6 +38,152 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+
+// ── Pinned Tables Section ─────────────────────────────────────────────────────
+
+function PinnedTablesSection() {
+  const queryClient = useQueryClient();
+  const [tableName, setTableName] = useState('');
+  const [schemaName, setSchemaName] = useState('');
+  const [note, setNote] = useState('');
+  const [addError, setAddError] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editNote, setEditNote] = useState('');
+
+  const { data: tables, isLoading } = useQuery<FavoritedTable[]>({
+    queryKey: ['favorited-tables'],
+    queryFn: getFavoritedTables,
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: () => pinTable({
+      table_name: tableName.trim(),
+      schema_name: schemaName.trim() || undefined,
+      note: note.trim() || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorited-tables'] });
+      setTableName(''); setSchemaName(''); setNote(''); setAddError('');
+    },
+    onError: (err) => setAddError(handleApiError(err)),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, note }: { id: number; note: string }) => updatePinnedTable(id, note || null),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['favorited-tables'] }); setEditingId(null); },
+  });
+
+  const unpinMutation = useMutation({
+    mutationFn: (id: number) => unpinTable(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['favorited-tables'] }),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5">
+          <Pin className="h-5 w-5 text-amber-400" />
+          Pinned Tables
+        </CardTitle>
+        <CardDescription>
+          Tables pinned here are included as retrieval hints in every query, so the AI prioritises them when relevant.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Add form */}
+        <div className="rounded-xl border border-border bg-background/50 p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pin a Table</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Table name *"
+              value={tableName}
+              onChange={e => setTableName(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              placeholder="Schema (optional)"
+              value={schemaName}
+              onChange={e => setSchemaName(e.target.value)}
+              className="w-36"
+            />
+          </div>
+          <Input
+            placeholder="Note (optional)"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+          />
+          {addError && <p className="text-xs text-destructive">{addError}</p>}
+          <Button
+            size="sm"
+            onClick={() => pinMutation.mutate()}
+            disabled={!tableName.trim() || pinMutation.isPending}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {pinMutation.isPending ? 'Pinning…' : 'Pin Table'}
+          </Button>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map(i => <div key={i} className="h-12 animate-pulse rounded-lg border border-border bg-card/40" />)}
+          </div>
+        ) : !tables || tables.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No tables pinned yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {tables.map(t => (
+              <div key={t.id} className="rounded-lg border border-border bg-card/40 px-3 py-2.5">
+                {editingId === t.id ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editNote}
+                      onChange={e => setEditNote(e.target.value)}
+                      placeholder="Note"
+                      className="flex-1 h-8 text-sm"
+                    />
+                    <Button size="sm" className="h-8" onClick={() => updateMutation.mutate({ id: t.id, note: editNote })}>
+                      Save
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => setEditingId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground font-mono">
+                        {t.schema_name ? `${t.schema_name}.` : ''}{t.table_name}
+                      </p>
+                      {t.note && <p className="text-xs text-muted-foreground">{t.note}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => { setEditingId(t.id); setEditNote(t.note ?? ''); }}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors text-xs"
+                        title="Edit note"
+                      >
+                        Edit note
+                      </button>
+                      <button
+                        onClick={() => unpinMutation.mutate(t.id)}
+                        disabled={unpinMutation.isPending}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Unpin"
+                      >
+                        <PinOff className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 const SchemaPage = () => {
   const queryClient = useQueryClient();
@@ -311,11 +465,11 @@ const SchemaPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-border bg-background/60 p-4">
+              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-default">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Chunks Stored</p>
                 <p className="mt-1 font-display text-3xl font-bold text-foreground">{status?.chunks_stored || 0}</p>
               </div>
-              <div className="rounded-xl border border-border bg-background/60 p-4">
+              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-default">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Vector Store</p>
                 <div className="mt-1 flex items-center gap-2">
                   {status?.vector_store_ready ? (
@@ -444,6 +598,9 @@ const SchemaPage = () => {
           </pre>
         </CardContent>
       </Card>
+
+      {/* Pinned Tables */}
+      <PinnedTablesSection />
     </div>
   );
 };

@@ -71,7 +71,17 @@ export default function SavedQueriesPage() {
   const currentPage = Math.floor(offset / LIMIT) + 1;
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-4xl space-y-5 pb-6">
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Saved Queries</h1>
+          <p className="mt-1 text-muted-foreground">Your bookmarked SQL queries for quick access.</p>
+        </div>
+        <span className="rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-xs text-muted-foreground">
+          {total} saved
+        </span>
+      </div>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
@@ -101,9 +111,12 @@ export default function SavedQueriesPage() {
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
         </div>
       ) : (data?.items.length ?? 0) === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="text-muted-foreground">No saved queries yet.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10">
+            <Star className="h-7 w-7 text-amber-400" />
+          </div>
+          <p className="font-medium text-foreground">No saved queries yet</p>
+          <p className="mt-1 text-sm text-muted-foreground/70">
             Star a query from the chat to save it here.
           </p>
         </div>
@@ -112,7 +125,7 @@ export default function SavedQueriesPage() {
           {data?.items.map(q => (
             <div
               key={q.id}
-              className="rounded-xl border border-border bg-card/60 p-4 space-y-2 hover:border-primary/20 transition-colors"
+              className="card-lift rounded-xl border border-border bg-card/70 p-4 space-y-3 hover:border-primary/30 transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

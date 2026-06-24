@@ -145,9 +145,9 @@ const AuthPage = () => {
       <div className="auth-blob auth-blob-2" />
       <div className="auth-blob auth-blob-3" />
 
-      <div className="relative z-10 w-full max-w-[420px] animate-slide-up rounded-3xl border border-border bg-popover/80 p-8 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
+      <div className="relative z-10 w-full max-w-[420px] animate-slide-up rounded-3xl border border-border/80 bg-popover/82 p-8 shadow-[0_40px_140px_-20px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-2xl">
         <div className="mb-7 flex items-center gap-3.5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary text-primary-foreground shadow-[0_0_28px_rgba(16,185,129,0.5)]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_36px_rgba(16,185,129,0.65),0_0_12px_rgba(16,185,129,0.4)] glow-primary">
             <TerminalSquare className="h-6 w-6" strokeWidth={2.3} />
           </div>
           <div>

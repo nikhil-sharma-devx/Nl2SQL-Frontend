@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { ChevronLeft, ChevronRight, Pencil, Play, Check, X, Code2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Play, Check, X, Code2, Copy } from 'lucide-react';
 
 export interface SQLVersion {
   version: number;
@@ -25,12 +25,21 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
   const [currentIndex, setCurrentIndex] = useState(versions.length - 1);
   const [isEditing, setIsEditing] = useState(false);
   const [editedSql, setEditedSql] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setCurrentIndex(versions.length - 1);
   }, [versions.length]);
 
   const currentVersion = versions[currentIndex];
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(currentVersion?.sql ?? '');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
   const totalVersions = versions.length;
 
   const handlePrevious = () => {
@@ -95,6 +104,14 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
           {currentVersion.isOriginal && totalVersions > 1 && (
             <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] text-muted-foreground">Original</span>
           )}
+
+          <button
+            onClick={handleCopy}
+            title="Copy SQL"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
 
           <div className="ml-1">
             {isEditing ? (

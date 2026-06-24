@@ -79,7 +79,7 @@ const ChatWindow = ({
         <div key={msg.id} className="animate-slide-up space-y-4">
           {/* User Question */}
           <div className="flex justify-end">
-            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground">
+            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25)]">
               <p className="text-sm leading-relaxed">{msg.question}</p>
               <span className="mt-1.5 block font-mono text-[10px] text-foreground/50">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -93,7 +93,7 @@ const ChatWindow = ({
               "mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:flex",
               msg.response.intent_type === 'direct_sql'
                 ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-[0_0_16px_rgba(124,58,237,0.4)]"
-                : "bg-gradient-to-br from-primary to-primary text-primary-foreground shadow-[0_0_16px_rgba(16,185,129,0.4)]"
+                : "bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_18px_rgba(16,185,129,0.5),0_0_6px_rgba(16,185,129,0.3)]"
             )}>
               {msg.response.intent_type === 'direct_sql' ? (
                 <SlidersHorizontal className="h-4 w-4" />
@@ -110,9 +110,16 @@ const ChatWindow = ({
                   <span className="font-mono text-[10px] text-muted-foreground/60">(Visual Builder Execution)</span>
                 </div>
               )}
-              {/* Assistant Message (Greetings/Off-topic) */}
+              {/* Assistant message: amber warning for empty results, plain text for greetings */}
               {msg.response.message && (
-                <div className="mb-4 leading-relaxed text-foreground/85">{msg.response.message}</div>
+                msg.response.execution_result !== null && msg.response.execution_result !== undefined ? (
+                  <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+                    <span className="mt-0.5 shrink-0">⚠</span>
+                    <span>{msg.response.message}</span>
+                  </div>
+                ) : (
+                  <div className="mb-4 leading-relaxed text-foreground/85">{msg.response.message}</div>
+                )
               )}
 
               {/* SQL Preview */}
@@ -187,7 +194,7 @@ const ChatWindow = ({
                       <button
                         key={i}
                         onClick={() => onSuggestionClick?.(q)}
-                        className="max-w-full truncate rounded-full border border-border bg-foreground/[0.03] px-3 py-1.5 text-left text-xs text-foreground/85 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                        className="max-w-full cursor-pointer truncate rounded-full border border-border bg-foreground/[0.03] px-3 py-1.5 text-left text-xs text-foreground/85 transition-all duration-200 hover:border-primary/40 hover:bg-primary/12 hover:text-primary hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                       >
                         {q}
                       </button>
@@ -212,7 +219,7 @@ const ChatWindow = ({
       {pendingQuestion && (
         <div className="animate-slide-up space-y-4">
           <div className="flex justify-end">
-            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground">
+            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25)]">
               <p className="text-sm leading-relaxed">{pendingQuestion}</p>
               <span className="mt-1.5 block font-mono text-[10px] text-foreground/50">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -225,10 +232,10 @@ const ChatWindow = ({
       {/* Empty State */}
       {messages.length === 0 && !isLoading && !pendingQuestion && (
         <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center py-10 text-center">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 shadow-[0_0_36px_rgba(16,185,129,0.25)]">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 shadow-[0_0_44px_rgba(16,185,129,0.35),0_0_16px_rgba(16,185,129,0.2)] animate-pulse-glow">
             <Sparkles className="h-8 w-8 text-primary" />
           </div>
-          <h3 className="mb-3 font-display text-2xl font-semibold tracking-tight text-foreground">Ask anything about your data</h3>
+          <h3 className="mb-3 font-display text-2xl font-semibold tracking-tight text-gradient-hero">Ask anything about your data</h3>
           <p className="max-w-md leading-relaxed text-muted-foreground">
             Type a natural-language question and I'll generate SQL for you. Every message in this session is saved together.
           </p>
@@ -238,7 +245,7 @@ const ChatWindow = ({
       {/* Loading / Thinking State */}
       {isLoading && (
         <div className="flex animate-slide-up justify-start gap-3">
-          <div className="mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary text-primary-foreground sm:flex">
+          <div className="mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_18px_rgba(16,185,129,0.5),0_0_6px_rgba(16,185,129,0.3)] sm:flex">
             <TerminalSquare className="h-4 w-4" />
           </div>
           <div className="w-full max-w-[90%] rounded-2xl rounded-tl-sm border border-border bg-card/70 px-5 py-4 shadow-lg backdrop-blur-md">
@@ -340,7 +347,7 @@ function SaveQueryButton({ question, sql }: { question: string; sql: string }) {
       disabled={saving || saved}
       title={error ? 'Failed to save — try again' : saved ? 'Saved to Saved Queries' : 'Save this query'}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors',
+        'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors',
         saved
           ? 'border-primary/40 bg-primary/10 text-primary'
           : error

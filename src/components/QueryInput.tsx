@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, AlertCircle, CornerDownLeft, Zap, SlidersHorizontal, Network, Square } from 'lucide-react';
+import { Send, AlertCircle, CornerDownLeft, Zap, SlidersHorizontal, Network, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getVisualizeSchema } from '../api/client';
@@ -51,6 +51,14 @@ const QueryInput = ({
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [question]);
 
   useEffect(() => {
     const fetchSchema = async () => {
@@ -121,7 +129,7 @@ const QueryInput = ({
       }
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey)) {
       e.preventDefault();
       handleSubmit(e as unknown as React.FormEvent);
     }
@@ -138,6 +146,7 @@ const QueryInput = ({
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="relative" ref={dropdownRef}>
           <textarea
+            ref={textareaRef}
             id="query-input"
             value={question}
             onChange={(e) => handleTextChange(e.target.value)}
@@ -148,13 +157,14 @@ const QueryInput = ({
                 ? 'border-rose-500/50 focus:border-rose-500/60 focus:ring-rose-500/20'
                 : 'border-border focus:border-primary/50 focus:ring-primary/20',
             )}
+            style={{ minHeight: '52px' }}
             onKeyDown={handleKeyDown}
             onFocus={() => {
               if (question.trim().length >= 2 && suggestions.length > 0) {
                 setShowSuggestions(true);
               }
             }}
-            rows={3}
+            rows={1}
             disabled={isLoading}
           />
           
@@ -237,7 +247,7 @@ const QueryInput = ({
 
           <div className="flex items-center gap-3">
             <span className="hidden items-center gap-1 font-mono text-[10px] text-muted-foreground/55 sm:flex">
-              <CornerDownLeft className="h-3 w-3" /> to send · Shift+Enter newline
+              <CornerDownLeft className="h-3 w-3" /> or Ctrl+Enter to send · Shift+Enter newline
             </span>
             <DatabaseSelector />
             <Button

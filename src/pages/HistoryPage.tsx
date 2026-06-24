@@ -326,7 +326,7 @@ const HistoryPage = () => {
         </div>
       ) : sessions.length === 0 ? (
         <Card className="py-20 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.2)]">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-500/35 bg-cyan-500/12 shadow-[0_0_40px_rgba(34,211,238,0.3),0_0_14px_rgba(34,211,238,0.18)] glow-cyan">
             <Clock className="h-8 w-8 text-cyan-400" />
           </div>
           <h3 className="mb-3 font-display text-xl font-semibold tracking-tight text-foreground">No Chat History Yet</h3>
@@ -335,7 +335,7 @@ const HistoryPage = () => {
       ) : (
         <div className="space-y-3">
           {sessions.map((session) => (
-            <Card key={session.id} className="group overflow-hidden transition-all hover:border-border">
+            <Card key={session.id} className="card-lift group overflow-hidden transition-all hover:border-primary/25">
               <div className="flex items-center">
                 <button onClick={() => handleSessionClick(session)} className="flex-1 p-5 text-left transition-colors hover:bg-foreground/[0.03]">
                   <div className="flex items-center justify-between">

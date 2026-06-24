@@ -174,7 +174,21 @@ export default function DataPrivacySettings() {
           <p className="text-xs text-muted-foreground">
             Status: <span className="font-medium text-foreground">{exportStatus.status}</span>
             {exportStatus.status === 'done' && exportStatus.download_url && (
-              <> — <a href={exportStatus.download_url} className="text-primary underline">Download</a></>
+              <> — <button
+                className="text-primary underline cursor-pointer"
+                onClick={() => {
+                  apiClient
+                    .get(exportStatus.download_url.replace(/^\/api\/v1\//, ''), { responseType: 'blob' })
+                    .then(r => {
+                      const url = URL.createObjectURL(r.data);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'my_data.zip';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    });
+                }}
+              >Download</button></>
             )}
             {exportStatus.status === 'failed' && exportStatus.error && (
               <span className="text-destructive"> — {exportStatus.error}</span>

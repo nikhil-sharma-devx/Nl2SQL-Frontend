@@ -10,6 +10,8 @@ import AuthPage from './pages/AuthPage';
 import SavedQueriesPage from './pages/SavedQueriesPage';
 import SettingsPage from './pages/SettingsPage';
 import TrainingPage from './pages/TrainingPage';
+import HelpPage from './pages/HelpPage';
+import TemplatesPage from './pages/TemplatesPage';
 
 const GOOGLE_CLIENT_ID = '665451798271-5jp3vbsckv2bkv4mkd30k7rardaipuns.apps.googleusercontent.com';
 
@@ -42,8 +44,10 @@ function AppRoutes() {
         <Route path="history" element={<HistoryPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="saved" element={<SavedQueriesPage />} />
+        <Route path="templates" element={<TemplatesPage />} />
         <Route path="training" element={<TrainingPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="help" element={<HelpPage />} />
       </Route>
       {/* Catch-all → home */}
       <Route path="*" element={<Navigate to="/" replace />} />
