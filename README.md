@@ -32,12 +32,18 @@ A production-grade chat interface that turns plain-English questions into SQL qu
 - **Schema visualiser** — Interactive React Flow graph of your database tables and foreign-key relationships
 - **Query history** — Full paginated log of past queries; export to CSV or JSON
 - **Saved queries** — Star and bookmark frequently used prompts; re-run them in one click
+- **Query templates** — Create, manage, and render parameterized NL + SQL templates with `{{placeholder}}` variables
+- **Glossary settings** — Manage your business dictionary; terms are automatically injected into query prompts by the backend
 - **Session management** — Named chat sessions with full message history, create / rename / delete
 - **SQL versioning** — Each query can be edited and re-run; all versions are kept and diffable
 - **Analytics dashboard** — Token usage, success rates, popular tables, intent distribution, failure patterns
 - **Training data pipeline** — Collect feedback, export fine-tuning JSONL files, start and monitor OpenAI fine-tune jobs from the UI
 - **BYOK (Bring Your Own Key)** — Users can supply their own LLM API keys; server keys are the fallback
 - **Authentication** — Email / password + Google OAuth, OTP email verification, password reset
+- **Onboarding checklist** — Collapsible progress tracker guiding new users through key setup steps
+- **Help & documentation page** — In-app FAQ, keyboard shortcuts, and feature guides
+- **Notification preferences** — Email digest, in-app alerts, and marketing opt-in toggles
+- **Appearance settings** — Theme, display density, and UI customisation options
 - **Light / dark theme** — System-default aware, persisted to `localStorage`
 
 ---
@@ -56,7 +62,7 @@ A production-grade chat interface that turns plain-English questions into SQL qu
 | Charts | Recharts | 2 |
 | Schema graph | @xyflow/react | 12 |
 | Icons | lucide-react | — |
-| Container | Docker + Nginx | alpine |
+| Container | Docker + Nginx | node:22-alpine / nginx:1.27-alpine |
 
 ---
 
@@ -65,7 +71,7 @@ A production-grade chat interface that turns plain-English questions into SQL qu
 ```
 Browser
   └── React SPA (Vite)
-        ├── AuthContext  ──── JWT + Google OAuth
+        ├── AuthContext  ──── JWT + Google OAuth + tokenStore
         ├── TanStack Query ── cached server state
         ├── Axios client ──── /api/v1/*  (proxied to backend)
         └── SSE stream ────── /api/v1/query/stream (fetch API)
@@ -84,7 +90,7 @@ In development, Vite's built-in proxy forwards `/api` and `/health` to `http://l
 
 ### Prerequisites
 
-- **Node.js 20+** and **npm 10+**
+- **Node.js 22+** and **npm 10+**
 - The [NL2SQL backend](../backend) running on `http://localhost:8000`
 
 ### Installation
@@ -132,45 +138,49 @@ npm run preview      # → http://localhost:4173
 ```
 src/
 ├── api/
-│   └── client.ts          # Axios instance, all typed API functions, SSE stream helper
+│   └── client.ts               # Axios instance, all typed API functions, SSE stream helper
+├── auth/
+│   └── tokenStore.ts           # JWT access/refresh token storage and rotation helpers
 ├── components/
-│   ├── ui/                # Primitive UI components (buttons, inputs, modals)
-│   ├── ChatWindow.tsx      # Chat message list + streaming UI
-│   ├── QueryInput.tsx      # Prompt text-area + submit controls
-│   ├── ResultTable.tsx     # Paginated, sortable result table
-│   ├── DataChart.tsx       # Auto-chart (bar / line / pie / scatter)
-│   ├── SchemaGraph.tsx     # React Flow schema visualiser
-│   ├── SqlPreview.tsx      # Syntax-highlighted SQL with copy button
-│   ├── VersionedSQLDisplay.tsx  # SQL version history switcher
-│   ├── FeedbackPanel.tsx   # Thumbs-up / down + correction form
-│   ├── Layout.tsx          # Sidebar + top-nav shell
-│   ├── DatabaseSelector.tsx
-│   ├── ModelSwitcher.tsx
-│   └── ...
+│   ├── ui/                     # Primitive UI components (buttons, inputs, modals)
+│   ├── ChatWindow.tsx          # Chat message list + streaming UI
+│   ├── QueryInput.tsx          # Prompt text-area + submit controls
+│   ├── ResultTable.tsx         # Paginated, sortable result table
+│   ├── DataChart.tsx           # Auto-chart (bar / line / pie / scatter)
+│   ├── SchemaGraph.tsx         # React Flow schema visualiser
+│   ├── SqlPreview.tsx          # Syntax-highlighted SQL with copy button
+│   ├── VersionedSQLDisplay.tsx # SQL version history switcher
+│   ├── FeedbackPanel.tsx       # Thumbs-up / down + correction form
+│   ├── OnboardingChecklist.tsx # Collapsible onboarding progress widget
+│   └── Layout.tsx              # Sidebar + top-nav shell
 ├── context/
-│   ├── AuthContext.tsx     # Global auth state, axios interceptor, OAuth
-│   └── ThemeContext.tsx    # Light / dark theme
+│   ├── AuthContext.tsx         # Global auth state, axios interceptor, OAuth
+│   └── ThemeContext.tsx        # Light / dark theme
 ├── features/
-│   ├── settings/          # Settings page sub-panels (LLM, database, BYOK, account)
-│   └── usage/             # Usage stats widgets
+│   └── settings/
+│       ├── Appearance.tsx      # Theme, density, and display preferences
+│       ├── GlossarySettings.tsx  # Business dictionary CRUD UI
+│       ├── Notifications.tsx   # Email digest and in-app alert toggles
+│       ├── DataPrivacy.tsx     # Data retention and privacy controls
+│       ├── General.tsx         # General user preferences
+│       └── Security.tsx        # Password change and active sessions
 ├── hooks/
-│   ├── useChat.ts          # Session + message state, stream orchestration
-│   ├── useSchema.ts        # Schema fetch, refresh, visualise
-│   └── useSettings.ts      # User preferences, BYOK, instructions
+│   ├── useChat.ts              # Session + message state, stream orchestration
+│   ├── useSchema.ts            # Schema fetch, refresh, visualise
+│   └── useSettings.ts         # User preferences, BYOK, instructions
 ├── pages/
-│   ├── AuthPage.tsx        # Login / register / OTP / password reset
-│   ├── QueryPage.tsx       # Main chat interface
-│   ├── SchemaPage.tsx      # Schema upload + graph view
-│   ├── HistoryPage.tsx     # Query history log
-│   ├── AnalyticsPage.tsx   # Usage analytics dashboard
-│   ├── SavedQueriesPage.tsx
-│   ├── TrainingPage.tsx    # Fine-tuning data management
-│   └── SettingsPage.tsx
-├── store/                  # Any Zustand / global state (if used)
-├── types/
-│   ├── query.types.ts
-│   └── schema.types.ts
-└── utils/
+│   ├── AuthPage.tsx            # Login / register / OTP / password reset
+│   ├── QueryPage.tsx           # Main chat interface
+│   ├── SchemaPage.tsx          # Schema upload + graph view
+│   ├── HistoryPage.tsx         # Query history log
+│   ├── AnalyticsPage.tsx       # Usage analytics dashboard
+│   ├── SavedQueriesPage.tsx    # Bookmarked queries
+│   ├── TemplatesPage.tsx       # Query template CRUD + render playground
+│   ├── TrainingPage.tsx        # Fine-tuning data management
+│   ├── SettingsPage.tsx        # Settings shell with tabbed sub-panels
+│   └── HelpPage.tsx            # In-app FAQ, keyboard shortcuts, feature guides
+├── syntax-highlighter.d.ts     # Type declarations for react-syntax-highlighter
+└── main.tsx                    # App entry point, router, query client
 ```
 
 ---
@@ -192,6 +202,10 @@ The main interface. Type a natural-language question, watch the SQL stream in re
 
 Upload a SQL DDL file or refresh the schema from the live database. The interactive React Flow graph shows every table, its columns, and foreign-key relationships.
 
+### Templates Page (/templates)
+
+Create and manage parameterized query templates. Each template has a natural-language description and a SQL pattern with `{{placeholder}}` variables. The render playground lets you substitute values and preview the result before running.
+
 ### History Page (/history)
 
 Full, paginated query history with search. Export to CSV or JSON. Clear with a confirmation prompt.
@@ -206,13 +220,31 @@ View collected feedback records, export a fine-tuning JSONL file, start an OpenA
 
 ### Settings Page (/settings)
 
-Switch LLM provider and model, change the database connection string, manage per-user API keys (BYOK), set a custom instruction prompt, control data retention, and manage active auth sessions.
+Tabbed settings panel with the following sections:
+
+| Tab | Description |
+|---|---|
+| **General** | LLM provider / model, database connection string, custom instruction prompt |
+| **Appearance** | Theme (light / dark / system), display density, UI preferences |
+| **Glossary** | Manage business dictionary terms injected into query prompts |
+| **Notifications** | Email digest, in-app alerts, marketing opt-in toggles |
+| **Security** | Password change, active session management |
+| **Data & Privacy** | Data retention settings, account deletion |
+| **API Keys (BYOK)** | Per-provider API key management |
+
+### Help Page (/help)
+
+In-app documentation including an FAQ, keyboard shortcut reference, and feature-by-feature guides — no external docs link needed.
+
+### Onboarding Checklist
+
+A collapsible widget (visible until all steps are complete) that tracks seven setup milestones: connecting a database, running a first query, saving a query, pinning a table, adding custom instructions, adding a glossary term, and exploring templates.
 
 ---
 
 ## Docker
 
-A multi-stage Dockerfile builds the React app and serves it with Nginx:
+A multi-stage Dockerfile builds the React app with Node 22 and serves it with Nginx:
 
 ```bash
 # Build the image
