@@ -34,6 +34,8 @@ interface Props {
 const PROVIDER_ICONS: Record<string, string> = {
   groq: 'G',
   openai: '⬡',
+  anthropic: 'A',
+  gemini: '✦',
   together: 'T',
 };
 
