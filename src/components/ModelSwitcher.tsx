@@ -50,6 +50,10 @@ const ModelSwitcher = () => {
         return 'bg-primary';
       case 'groq':
         return 'bg-amber-400';
+      case 'anthropic':
+        return 'bg-orange-500';
+      case 'gemini':
+        return 'bg-blue-500';
       default:
         return 'bg-cyan-400';
     }
