@@ -13,7 +13,7 @@ import TrainingPage from './pages/TrainingPage';
 import HelpPage from './pages/HelpPage';
 import TemplatesPage from './pages/TemplatesPage';
 
-const GOOGLE_CLIENT_ID = '665451798271-5jp3vbsckv2bkv4mkd30k7rardaipuns.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 
 /** Redirect unauthenticated users to /auth */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
