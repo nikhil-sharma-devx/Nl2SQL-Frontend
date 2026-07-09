@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Separator } from '../../components/ui/separator';
 import ConfirmDestructive from '../../components/ConfirmDestructive';
+import InfoTip from '../../components/InfoTip';
 
 type Retention = 'forever' | '30d' | '7d' | 'none';
 
@@ -201,7 +202,10 @@ export default function DataPrivacySettings() {
 
       {/* Data Retention */}
       <section className="space-y-2">
-        <h3 className="text-sm font-semibold">Data Retention</h3>
+        <h3 className="text-sm font-semibold flex items-center">
+          Data Retention
+          <InfoTip text="Controls how long your query history is stored. After the chosen period, old queries are automatically purged. 'Don't store' means queries are not saved at all." />
+        </h3>
         <p className="text-xs text-muted-foreground">
           How long to keep your query history.
         </p>

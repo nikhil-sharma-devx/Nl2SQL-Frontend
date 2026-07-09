@@ -3,16 +3,19 @@ import { useSettings } from '../../hooks/useSettings';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { cn } from '@/lib/utils';
+import InfoTip from '../../components/InfoTip';
 
 function RadioGroup<T extends string>({
   label,
   hint,
+  info,
   value,
   options,
   onChange,
 }: {
   label: string;
   hint?: string;
+  info?: string;
   value: T;
   options: { value: T; label: string; description: string }[];
   onChange: (v: T) => void;
@@ -20,7 +23,10 @@ function RadioGroup<T extends string>({
   return (
     <div className="space-y-2">
       <div>
-        <Label>{label}</Label>
+        <Label>
+          {label}
+          {info && <InfoTip text={info} />}
+        </Label>
         {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -75,25 +81,27 @@ export default function AppearanceSettings() {
     <div className="space-y-6 max-w-lg">
       <RadioGroup
         label="Font Size"
-        hint="Controls text size across the application."
+        hint="Controls text size across the application. Changes take effect immediately."
+        info="Sets the base font size for the entire app. Small = 13px, Medium = 16px (default), Large = 18px. All spacing scales proportionally since Tailwind uses rem units."
         value={form.font_size}
         onChange={(v) => setForm(f => ({ ...f, font_size: v }))}
         options={[
-          { value: 'small', label: 'Small', description: 'Compact, more content visible' },
-          { value: 'medium', label: 'Medium', description: 'Default balance' },
-          { value: 'large', label: 'Large', description: 'Easier on the eyes' },
+          { value: 'small', label: 'Small', description: 'Compact text — 13px base, fits more content' },
+          { value: 'medium', label: 'Medium', description: 'Default — 16px, balanced readability' },
+          { value: 'large', label: 'Large', description: 'Easier to read — 18px, ideal for high-DPI' },
         ]}
       />
 
       <RadioGroup
         label="UI Density"
-        hint="Controls spacing and padding throughout the interface."
+        hint="Controls spacing and padding throughout the interface. Changes take effect immediately."
+        info="Scales all padding, margins, and gaps in the app. Compact = tighter layout showing more content. Spacious = more breathing room, easier to click."
         value={form.ui_density}
         onChange={(v) => setForm(f => ({ ...f, ui_density: v }))}
         options={[
-          { value: 'compact', label: 'Compact', description: 'Dense, more on screen' },
-          { value: 'comfortable', label: 'Comfortable', description: 'Balanced (default)' },
-          { value: 'spacious', label: 'Spacious', description: 'Generous padding' },
+          { value: 'compact', label: 'Compact', description: 'Tighter spacing — more visible on screen' },
+          { value: 'comfortable', label: 'Comfortable', description: 'Balanced spacing (default)' },
+          { value: 'spacious', label: 'Spacious', description: 'Generous padding — easier to navigate' },
         ]}
       />
 

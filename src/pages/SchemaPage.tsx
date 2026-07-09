@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Upload,
@@ -16,6 +16,11 @@ import {
   Pin,
   PinOff,
   Plus,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  Table2,
 } from 'lucide-react';
 import {
   uploadSchema,
@@ -27,16 +32,24 @@ import {
   pinTable,
   unpinTable,
   updatePinnedTable,
+  getSchemaTables,
+  syncSchema,
+  setTableDescription,
+  markTablesSeen,
   type FavoritedTable,
   type IngestResponse,
   type DatabaseConfig,
   type SchemaRefreshResponse,
+  type CatalogTable,
+  type SchemaTablesResponse,
 } from '../api/client';
 import { useSchema } from '../hooks/useSchema';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 // ── Pinned Tables Section ─────────────────────────────────────────────────────
@@ -185,6 +198,274 @@ function PinnedTablesSection() {
   );
 }
 
+// ── Schema Tables Section (catalog browser) ───────────────────────────────────
+
+const SOURCE_META: Record<string, { label: string; variant: 'default' | 'info' | 'violet' | 'secondary' }> = {
+  reflected: { label: 'Auto-generated', variant: 'info' },
+  uploaded: { label: 'Uploaded', variant: 'violet' },
+  merged: { label: 'Merged', variant: 'default' },
+};
+
+function SchemaTablesSection() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [editingDesc, setEditingDesc] = useState<Record<number, string>>({});
+
+  const { data, isLoading, isFetching } = useQuery<SchemaTablesResponse>({
+    queryKey: ['schema-tables'],
+    queryFn: () => getSchemaTables(),
+    refetchInterval: 60_000, // "new table appears automatically"
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: favorites } = useQuery<FavoritedTable[]>({
+    queryKey: ['favorited-tables'],
+    queryFn: getFavoritedTables,
+  });
+
+  const favByName = useMemo(() => {
+    const m = new Map<string, number>();
+    (favorites ?? []).forEach(f => m.set(f.table_name, f.id));
+    return m;
+  }, [favorites]);
+
+  const invalidatePins = () => {
+    queryClient.invalidateQueries({ queryKey: ['favorited-tables'] });
+    queryClient.invalidateQueries({ queryKey: ['schema-tables'] });
+  };
+
+  const syncMutation = useMutation({
+    mutationFn: () => syncSchema(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schema-tables'] });
+      queryClient.invalidateQueries({ queryKey: ['schemaStatus'] });
+    },
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: (t: CatalogTable) => pinTable({ table_name: t.table_name, schema_name: t.schema_name }),
+    onSuccess: invalidatePins,
+  });
+  const unpinMutation = useMutation({
+    mutationFn: (favId: number) => unpinTable(favId),
+    onSuccess: invalidatePins,
+  });
+  const descMutation = useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) => setTableDescription(id, text.trim() || null),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schema-tables'] }),
+  });
+  const seenMutation = useMutation({
+    mutationFn: (ids: number[]) => markTablesSeen(ids),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schema-tables'] }),
+  });
+
+  const toggleExpand = (t: CatalogTable) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(t.id)) {
+        next.delete(t.id);
+      } else {
+        next.add(t.id);
+        if (t.is_new) seenMutation.mutate([t.id]);
+      }
+      return next;
+    });
+  };
+
+  const togglePin = (t: CatalogTable) => {
+    const favId = favByName.get(t.table_name);
+    if (t.pinned && favId != null) unpinMutation.mutate(favId);
+    else if (!t.pinned) pinMutation.mutate(t);
+  };
+
+  const tables = data?.tables ?? [];
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tables;
+    return tables.filter(
+      t =>
+        t.table_name.toLowerCase().includes(q) ||
+        t.columns.some(c => c.name.toLowerCase().includes(q)),
+    );
+  }, [tables, search]);
+
+  const src = SOURCE_META[data?.source ?? 'reflected'] ?? SOURCE_META.reflected;
+
+  return (
+    <Card id="schema-tables-card">
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2.5">
+              <Table2 className="h-5 w-5 text-emerald-400" />
+              Tables
+            </CardTitle>
+            <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
+              <Badge variant={src.variant}>{src.label}</Badge>
+              {data?.last_synced_at && (
+                <span className="text-xs text-muted-foreground">
+                  Synced {new Date(data.last_synced_at).toLocaleString()}
+                </span>
+              )}
+              {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            className="border border-primary/30 bg-primary/15 text-primary shadow-none hover:bg-primary/25"
+          >
+            {syncMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Syncing…</>
+            ) : (
+              <><RefreshCw className="h-4 w-4" /> Sync now</>
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {syncMutation.isError && (
+          <p className="text-xs text-destructive">{handleApiError(syncMutation.error)}</p>
+        )}
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search tables or columns…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-12 animate-pulse rounded-lg border border-border bg-card/40" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-background/40 p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              {tables.length === 0
+                ? 'No tables yet. Click "Sync now" to reflect your database, or upload a schema below.'
+                : 'No tables match your search.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map(t => {
+              const isOpen = expanded.has(t.id);
+              return (
+                <div key={t.id} className="rounded-lg border border-border bg-card/40">
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    <button
+                      onClick={() => toggleExpand(t)}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      title={isOpen ? 'Collapse' : 'Expand columns'}
+                    >
+                      {isOpen ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="truncate font-mono text-sm font-semibold text-foreground">
+                        {t.schema_name && t.schema_name !== 'public' ? `${t.schema_name}.` : ''}
+                        {t.table_name}
+                      </span>
+                      {t.is_new && (
+                        <Badge variant="default" className="shrink-0">
+                          <Sparkles className="h-3 w-3" /> New
+                        </Badge>
+                      )}
+                      <Badge variant={t.source === 'uploaded' ? 'violet' : 'secondary'} className="shrink-0">
+                        {t.source}
+                      </Badge>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {t.columns.length} col{t.columns.length === 1 ? '' : 's'}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => togglePin(t)}
+                      disabled={pinMutation.isPending || unpinMutation.isPending}
+                      className={cn(
+                        'shrink-0 rounded-lg p-1.5 transition-colors',
+                        t.pinned
+                          ? 'text-amber-400 hover:bg-amber-400/10'
+                          : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground',
+                      )}
+                      title={t.pinned ? 'Unpin table' : 'Pin table'}
+                    >
+                      {t.pinned ? <Pin className="h-4 w-4 fill-current" /> : <PinOff className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <div className="space-y-3 border-t border-border px-3 py-3">
+                      {/* Columns */}
+                      <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="text-muted-foreground">
+                              <th className="px-2 py-1 font-semibold">Column</th>
+                              <th className="px-2 py-1 font-semibold">Type</th>
+                              <th className="px-2 py-1 font-semibold">Keys</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {t.columns.map(c => (
+                              <tr key={c.name} className="border-t border-border/60">
+                                <td className="px-2 py-1 font-mono text-foreground">{c.name}</td>
+                                <td className="px-2 py-1 font-mono text-muted-foreground">{c.data_type}</td>
+                                <td className="px-2 py-1">
+                                  <span className="flex flex-wrap gap-1">
+                                    {c.primary_key && <Badge variant="warning">PK</Badge>}
+                                    {c.foreign_key && <Badge variant="info">FK → {c.foreign_key}</Badge>}
+                                    {!c.nullable && <Badge variant="secondary">NOT NULL</Badge>}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Editable description */}
+                      <div className="space-y-2">
+                        <Label className="normal-case text-xs">Description</Label>
+                        <Textarea
+                          value={editingDesc[t.id] ?? t.description ?? ''}
+                          onChange={e => setEditingDesc(prev => ({ ...prev, [t.id]: e.target.value }))}
+                          placeholder="Add a business description to help the assistant…"
+                          rows={2}
+                          className="text-sm"
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="h-8"
+                            disabled={descMutation.isPending}
+                            onClick={() => descMutation.mutate({ id: t.id, text: editingDesc[t.id] ?? t.description ?? '' })}
+                          >
+                            {descMutation.isPending ? 'Saving…' : 'Save description'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 const SchemaPage = () => {
   const queryClient = useQueryClient();
   const [dragActive, setDragActive] = useState(false);
@@ -219,6 +500,7 @@ const SchemaPage = () => {
       setUploadResult(data);
       setSelectedFile(null);
       queryClient.invalidateQueries({ queryKey: ['schemaStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['schema-tables'] });
     },
   });
 
@@ -243,6 +525,7 @@ const SchemaPage = () => {
     onSuccess: (data) => {
       setRefreshResult(data);
       queryClient.invalidateQueries({ queryKey: ['schemaStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['schema-tables'] });
       refetchStatus();
     },
   });
@@ -483,6 +766,9 @@ const SchemaPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Tables (catalog browser) */}
+      <SchemaTablesSection />
 
       {/* Upload Schema */}
       <Card>

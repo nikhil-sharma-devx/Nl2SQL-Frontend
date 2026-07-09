@@ -451,6 +451,25 @@
     radial-gradient(700px circle at 80% 100%, rgba(255, 255, 255, 0.03), transparent 45%);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Font size — applied to <html> via data-font-size attribute.
+   Since Tailwind uses rem, all text and spacing scales automatically.
+   ───────────────────────────────────────────────────────────────────────── */
+
+[data-font-size="small"] { font-size: 13px; }
+/* medium is the browser default (16px) — no override needed */
+[data-font-size="large"] { font-size: 18px; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   UI Density — applied to <html> via data-density attribute.
+   Tailwind v4 spacing utilities are calc(N * var(--spacing)), default 0.25rem.
+   Overriding --spacing here scales all p-*, m-*, gap-*, space-* utilities.
+   ───────────────────────────────────────────────────────────────────────── */
+
+[data-density="compact"]    { --spacing: 0.2rem; }
+/* comfortable is Tailwind default (0.25rem) — no override needed */
+[data-density="spacious"]   { --spacing: 0.3125rem; }
+
 /* Soften / recolor the auth atmosphere per theme */
 [data-theme="light"] .auth-blob { opacity: 0.22; }
 [data-theme="noir"] .auth-blob {

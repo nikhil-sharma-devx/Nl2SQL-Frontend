@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useSettings } from '../hooks/useSettings';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Database,
@@ -29,6 +30,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import ProfileModal from './ProfileModal';
 import SettingsModal from './SettingsModal';
 import UsageModal from './UsageModal';
+import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
 import { getSessions, checkHealth } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -100,6 +102,13 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-font-size', settings.font_size);
+    root.setAttribute('data-density', settings.ui_density);
+  }, [settings.font_size, settings.ui_density]);
 
   // Desktop: collapsed to icon strip
   const [collapsed, setCollapsed] = useState(false);
@@ -150,6 +159,22 @@ const Layout = () => {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Global "Alt+N" → new chat (documented in Help). Ignored while typing.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+        const target = e.target as HTMLElement | null;
+        const tag = target?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+        e.preventDefault();
+        navigate('/', { state: { newChat: true } });
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navigate]);
 
   const startResize = useCallback(
     (e: React.MouseEvent) => {
@@ -538,6 +563,7 @@ const Layout = () => {
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <UsageModal open={usageOpen} onClose={() => setUsageOpen(false)} />
+      <ShortcutOverlay />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
       <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -596,7 +622,15 @@ const Layout = () => {
             isQueryPage ? 'overflow-hidden pb-0 md:pb-0' : 'overflow-auto custom-scrollbar',
           )}
         >
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="flex flex-1 items-center justify-center" role="status" aria-label="Loading page">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-transparent motion-reduce:animate-none" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

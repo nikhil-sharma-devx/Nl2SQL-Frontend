@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useTheme } from '../context/ThemeContext';
 import {
   Clock,
   MessageSquare,
@@ -24,20 +25,25 @@ import {
   handleApiError,
   type SessionDetail,
   type ChatSession,
+  type SessionListResponse,
 } from '../api/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const HistoryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isLightTheme = theme === 'light' || theme === 'claude';
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [limit, setLimit] = useState(50);
 
   useEffect(() => {
     const state = location.state as { selectedSessionId?: string };
@@ -55,28 +61,62 @@ const HistoryPage = () => {
     }
   }, [location.state]);
 
-  const { data: sessionsData, isLoading } = useQuery({
-    queryKey: ['sessions'],
-    queryFn: () => getSessions(50, 0),
+  const { data: sessionsData, isLoading, isFetching } = useQuery({
+    queryKey: ['sessions', limit],
+    queryFn: () => getSessions(limit, 0),
+    placeholderData: (prev) => prev,
   });
+
+  // TanStack Query v5 optimistic-update helpers. All session lists are cached
+  // under keys prefixed with ['sessions', …] (see the useQuery above), so we
+  // snapshot/patch/rollback across every matching cache entry.
+  const snapshotSessions = async () => {
+    await queryClient.cancelQueries({ queryKey: ['sessions'] });
+    return queryClient.getQueriesData<SessionListResponse>({ queryKey: ['sessions'] });
+  };
+  const rollbackSessions = (context?: { previous: [readonly unknown[], SessionListResponse | undefined][] }) => {
+    context?.previous.forEach(([key, data]) => queryClient.setQueryData(key, data));
+  };
 
   const clearMutation = useMutation({
     mutationFn: deleteAllSessions,
+    onMutate: async () => {
+      const previous = await snapshotSessions();
+      queryClient.setQueriesData<SessionListResponse>({ queryKey: ['sessions'] }, (old) =>
+        old ? { ...old, sessions: [], total: 0 } : old,
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => rollbackSessions(context),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setShowClearConfirm(false);
       setSelectedSession(null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteSession,
+    onMutate: async (sessionId: string) => {
+      const previous = await snapshotSessions();
+      queryClient.setQueriesData<SessionListResponse>({ queryKey: ['sessions'] }, (old) =>
+        old
+          ? { ...old, sessions: old.sessions.filter((s) => s.id !== sessionId), total: Math.max(0, old.total - 1) }
+          : old,
+      );
+      return { previous };
+    },
+    onError: (_err, _sessionId, context) => rollbackSessions(context),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setSessionToDelete(null);
       if (selectedSession) {
         setSelectedSession(null);
       }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
   });
 
@@ -110,6 +150,8 @@ const HistoryPage = () => {
   };
 
   const sessions = sessionsData?.sessions || [];
+  const totalSessions = sessionsData?.total ?? sessions.length;
+  const hasMore = sessions.length < totalSessions;
 
   const deleteDialog = (
     <Dialog open={!!sessionToDelete} onOpenChange={(o) => !o && setSessionToDelete(null)}>
@@ -194,7 +236,7 @@ const HistoryPage = () => {
                           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Generated SQL</span>
                         </div>
                         <div className="overflow-hidden rounded-xl border border-border">
-                          <SyntaxHighlighter language="sql" style={atomDark} customStyle={{ margin: 0, padding: '1rem', fontSize: '0.8rem', background: '#0b0e14' }}>
+                          <SyntaxHighlighter language="sql" style={isLightTheme ? oneLight : atomDark} customStyle={{ margin: 0, padding: '1rem', fontSize: '0.8rem', background: 'var(--card)' }}>
                             {msg.response.sql}
                           </SyntaxHighlighter>
                         </div>
@@ -321,8 +363,19 @@ const HistoryPage = () => {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="space-y-3">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <div className="flex items-center gap-4 p-5">
+                <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-1/2 rounded-md" />
+                  <Skeleton className="h-4 w-1/3 rounded-md" />
+                </div>
+                <Skeleton className="h-5 w-5 shrink-0 rounded-md" />
+              </div>
+            </Card>
+          ))}
         </div>
       ) : sessions.length === 0 ? (
         <Card className="py-20 text-center">
@@ -368,6 +421,21 @@ const HistoryPage = () => {
               </div>
             </Card>
           ))}
+
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setLimit((l) => Math.min(l + 50, 200))}
+                disabled={isFetching || limit >= 200}
+              >
+                {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {limit >= 200
+                  ? `Showing first 200 of ${totalSessions}`
+                  : `Load more (${sessions.length} of ${totalSessions})`}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

@@ -3,10 +3,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { analyticsAPI } from '../api/client';
-import { Trash2, AlertTriangle, RefreshCw, TrendingUp, Activity, Zap, Clock, AlertCircle, X, LayoutGrid } from 'lucide-react';
+import { analyticsAPI, type CacheStats, type LatencyBreakdown } from '../api/client';
+import { Trash2, AlertTriangle, RefreshCw, TrendingUp, Activity, Zap, Clock, AlertCircle, X, LayoutGrid, Layers, Gauge } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CHART_OPTIONS = [
   { id: 'popular_queries', label: 'Popular Queries' },
@@ -14,13 +15,17 @@ const CHART_OPTIONS = [
   { id: 'success_vs_failed', label: 'Success vs Failed' },
   { id: 'failure_patterns', label: 'Failure Patterns' },
   { id: 'additional_stats', label: 'Additional Stats' },
+  { id: 'cache_layers', label: 'Cache Layers' },
+  { id: 'latency_breakdown', label: 'Latency Breakdown' },
   { id: 'intent_distribution', label: 'Intent Distribution' },
   { id: 'prompt_versions', label: 'Prompt Versions' },
 ] as const;
 
 type ChartId = typeof CHART_OPTIONS[number]['id'];
 
-const COLORS = ['#10b981', '#22d3ee', '#a78bfa', '#f59e0b', '#fb7185', '#3b82f6'];
+// Themeable categorical palette — resolves per active theme (light/dark/etc.)
+// via the --chart-* CSS variables defined in index.css (same as DataChart.tsx).
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 
 const tooltipStyle = {
   backgroundColor: 'var(--popover)',
@@ -64,6 +69,8 @@ export default function AnalyticsPage() {
   const [failurePatterns, setFailurePatterns] = useState<FailurePattern[]>([]);
   const [intentDistribution, setIntentDistribution] = useState<any[]>([]);
   const [promptVersions, setPromptVersions] = useState<any[]>([]);
+  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
+  const [latency, setLatency] = useState<LatencyBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -101,13 +108,15 @@ export default function AnalyticsPage() {
     try {
       setLoading(true);
       setFetchError(null);
-      const [summaryData, popularData, tableData, failureData, intentData, promptData] = await Promise.all([
+      const [summaryData, popularData, tableData, failureData, intentData, promptData, cacheData, latencyData] = await Promise.all([
         analyticsAPI.getSummary(days),
         analyticsAPI.getPopularQueries(10, days),
         analyticsAPI.getTableUsage(20, days),
         analyticsAPI.getFailurePatterns(days),
         analyticsAPI.getIntentDistribution(days),
         analyticsAPI.getPromptVersions(days),
+        analyticsAPI.getCacheStats().catch(() => null),
+        analyticsAPI.getLatencyBreakdown().catch(() => null),
       ]);
       setSummary(summaryData);
       setPopularQueries(popularData);
@@ -115,6 +124,8 @@ export default function AnalyticsPage() {
       setFailurePatterns(failureData);
       setIntentDistribution(intentData);
       setPromptVersions(promptData);
+      setCacheStats(cacheData);
+      setLatency(latencyData);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
       setFetchError(error instanceof Error ? error.message : 'Failed to load analytics data.');
@@ -154,9 +165,35 @@ export default function AnalyticsPage() {
 
   if (loading && !summary) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center space-y-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary/30 border-t-primary shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
-        <div className="animate-pulse font-mono text-sm tracking-widest text-primary">ANALYZING DATA…</div>
+      <div className="mx-auto w-full max-w-6xl space-y-6 pb-6">
+        {/* Header row */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <Skeleton className="h-9 w-56 rounded-lg" />
+          <Skeleton className="h-9 w-72 rounded-lg" />
+        </div>
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-3 w-24 rounded-md" />
+                  <Skeleton className="h-8 w-20 rounded-md" />
+                </div>
+                <Skeleton className="h-5 w-5 shrink-0 rounded-md" />
+              </div>
+            </Card>
+          ))}
+        </div>
+        {/* Chart panels */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader><Skeleton className="h-5 w-44 rounded-md" /></CardHeader>
+              <CardContent><Skeleton className="h-[300px] w-full rounded-xl" /></CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -302,7 +339,7 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="question" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} angle={-45} textAnchor="end" height={100} />
                     <YAxis tick={{ fill: 'var(--muted-foreground)' }} />
                     <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--foreground)', fontWeight: 500 }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                    <Bar dataKey="count" fill="#10b981" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="count" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -337,8 +374,8 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie data={[{ name: 'Successful', value: summary.successful_queries }, { name: 'Failed', value: summary.failed_queries }]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                      <Cell fill="#10b981" />
-                      <Cell fill="#fb7185" />
+                      <Cell fill="var(--chart-1)" />
+                      <Cell fill="var(--chart-5)" />
                     </Pie>
                     <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--foreground)', fontWeight: 500 }} />
                   </PieChart>
@@ -393,6 +430,83 @@ export default function AnalyticsPage() {
         </Card>
       )}
 
+      {/* Cache Layers + Latency Breakdown */}
+      {(show('cache_layers') || show('latency_breakdown')) && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {show('cache_layers') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Layers className="h-4 w-4 text-cyan-400" /> Cache Hit Rate by Layer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {cacheStats && cacheStats.total_lookups > 0 ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-border bg-background/60 p-4">
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">L1 · Exact Hit %</p>
+                        <p className="mt-1 font-display text-2xl font-bold text-primary">{(cacheStats.exact_hit_rate * 100).toFixed(1)}%</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/70">{cacheStats.exact_hits} hits</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/60 p-4">
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">L2 · Semantic Hit %</p>
+                        <p className="mt-1 font-display text-2xl font-bold text-cyan-400">{(cacheStats.semantic_hit_rate * 100).toFixed(1)}%</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/70">{cacheStats.semantic_hits} hits</p>
+                      </div>
+                    </div>
+                    {/* Stacked hit-rate bar */}
+                    <div>
+                      <div className="mb-1 flex justify-between font-mono text-[10px] text-muted-foreground/70">
+                        <span>Overall hit rate</span>
+                        <span>{(cacheStats.overall_hit_rate * 100).toFixed(1)}% of {cacheStats.total_lookups} lookups</span>
+                      </div>
+                      <div className="flex h-3 w-full overflow-hidden rounded-full bg-background/60">
+                        <div className="h-full bg-primary" style={{ width: `${cacheStats.exact_hit_rate * 100}%` }} title="Exact hits" />
+                        <div className="h-full bg-cyan-400" style={{ width: `${cacheStats.semantic_hit_rate * 100}%` }} title="Semantic hits" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-muted-foreground/80">No cache lookups recorded yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {show('latency_breakdown') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Gauge className="h-4 w-4 text-violet-400" /> Pipeline Latency Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {latency && latency.samples > 0 ? (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart
+                      data={Object.entries(latency.avg_stage_ms).map(([stage, ms]) => ({
+                        stage: stage.replace('_', ' '),
+                        ms,
+                      }))}
+                      layout="vertical"
+                      margin={{ left: 24 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis type="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} unit="ms" />
+                      <YAxis type="category" dataKey="stage" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} width={90} />
+                      <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--foreground)', fontWeight: 500 }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} formatter={(v: any) => [`${v} ms`, 'avg']} />
+                      <Bar dataKey="ms" fill="var(--chart-3)" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="py-8 text-center text-muted-foreground/80">No pipeline runs recorded yet.</p>
+                )}
+                {latency && latency.samples > 0 && (
+                  <p className="mt-2 text-right font-mono text-[11px] text-muted-foreground/70">avg over {latency.samples} run{latency.samples !== 1 ? 's' : ''} (since restart)</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Charts Row 3 */}
       {(show('intent_distribution') || show('prompt_versions')) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -424,7 +538,7 @@ export default function AnalyticsPage() {
                     <YAxis tick={{ fill: 'var(--muted-foreground)' }} label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft', fill: 'var(--muted-foreground)' }} />
                     <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--foreground)', fontWeight: 500 }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                     <Legend wrapperStyle={{ color: 'var(--muted-foreground)' }} />
-                    <Bar dataKey="success_rate" fill="#a78bfa" name="Success Rate %" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="success_rate" fill="var(--chart-3)" name="Success Rate %" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
                 {promptVersions.length === 0 && <p className="py-4 text-center text-muted-foreground/80">No prompt version data available</p>}

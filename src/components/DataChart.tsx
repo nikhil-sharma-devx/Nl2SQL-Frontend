@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, Table } from 'lucide-react';
+import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, Table, Download, List } from 'lucide-react';
 
 interface DataChartProps {
   data: any[];
@@ -36,6 +36,50 @@ const tooltipStyle = {
 
 const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
   const [activeType, setActiveType] = useState<string>('table');
+  const [showLegend, setShowLegend] = useState<boolean>(false);
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  // Export the rendered chart SVG as a PNG without a dependency: resolve CSS
+  // variable colors (they don't survive standalone serialization) to concrete
+  // values, draw the SVG onto a canvas, then download.
+  const downloadPNG = () => {
+    const svg = chartRef.current?.querySelector('svg');
+    if (!svg) return;
+    const rootStyle = getComputedStyle(document.documentElement);
+    let svgStr = new XMLSerializer().serializeToString(svg);
+    svgStr = svgStr.replace(/var\((--[a-z0-9-]+)\)/gi, (_m, name) => rootStyle.getPropertyValue(name).trim() || '#888888');
+    if (!svgStr.includes('xmlns=')) {
+      svgStr = svgStr.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    const rect = svg.getBoundingClientRect();
+    const width = rect.width || 600;
+    const height = rect.height || 260;
+    const url = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(scale, scale);
+        ctx.fillStyle = rootStyle.getPropertyValue('--card').trim() || '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'chart.png';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }, 'image/png');
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
 
   useEffect(() => {
     if (config && config.type && config.type !== 'none') {
@@ -93,6 +137,7 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
               <XAxis dataKey={xAxisKey} stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
               <YAxis stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
               <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--primary)' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              {showLegend && <Legend wrapperStyle={{ color: 'var(--muted-foreground)', fontSize: '11px' }} />}
               <Bar dataKey={yAxisKey} fill="var(--primary)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -105,6 +150,7 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
               <XAxis dataKey={xAxisKey} stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
               <YAxis stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
               <Tooltip contentStyle={tooltipStyle} />
+              {showLegend && <Legend wrapperStyle={{ color: 'var(--muted-foreground)', fontSize: '11px' }} />}
               <Line type="monotone" dataKey={yAxisKey} stroke="var(--chart-2)" strokeWidth={2.5} dot={{ r: 4, fill: 'var(--chart-2)' }} />
             </LineChart>
           </ResponsiveContainer>
@@ -165,9 +211,28 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
           >
             <Table className="h-3.5 w-3.5" />
           </button>
+          {(activeType === 'bar' || activeType === 'line') && (
+            <button
+              onClick={() => setShowLegend((s) => !s)}
+              className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${showLegend ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              title={showLegend ? 'Hide legend' : 'Show legend'}
+              aria-pressed={showLegend}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {activeType !== 'table' && (
+            <button
+              onClick={downloadPNG}
+              className="rounded px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
+              title="Download chart as PNG"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
-      {renderChart()}
+      <div ref={chartRef}>{renderChart()}</div>
     </div>
   );
 };

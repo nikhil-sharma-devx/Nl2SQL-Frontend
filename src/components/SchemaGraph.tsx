@@ -127,12 +127,15 @@ function buildNodesAndEdges(schema: any, highlightedTables: string[]) {
           label: col.name,
           animated: highlightedTables.includes(table.name) || highlightedTables.includes(targetTable),
           style: {
-            stroke: highlightedTables.includes(table.name) ? '#10b981' : '#8b5cf6',
+            // Edge `style` is applied as an inline style on the SVG path, so
+            // CSS design tokens resolve here (primary = highlighted, violet = default).
+            stroke: highlightedTables.includes(table.name) ? 'var(--primary)' : 'var(--violet-text)',
             strokeWidth: 2,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: highlightedTables.includes(table.name) ? '#10b981' : '#8b5cf6',
+            // React Flow renders the marker arrow with inline style, so var() works.
+            color: highlightedTables.includes(table.name) ? 'var(--primary)' : 'var(--violet-text)',
           },
         });
       }
@@ -255,11 +258,11 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
             animated: isHighlight,
             style: {
               ...edge.style,
-              stroke: isHighlight ? '#10b981' : '#7c3aed',
+              stroke: isHighlight ? 'var(--primary)' : 'var(--violet-text)',
             },
             markerEnd: {
               ...(edge.markerEnd as Record<string, unknown>),
-              color: isHighlight ? '#10b981' : '#7c3aed',
+              color: isHighlight ? 'var(--primary)' : 'var(--violet-text)',
             } as Edge['markerEnd'],
           };
         }),
@@ -343,6 +346,9 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
         defaultEdgeOptions={{ type: 'smoothstep' }}
         minZoom={0.1}
       >
+        {/* Background/MiniMap colors below are written to SVG presentation
+            attributes (fill/color), where CSS var() does NOT resolve, so they
+            stay as concrete strings. */}
         <Background color="#1e293b" gap={24} size={2} />
         <Controls className="border-border bg-card fill-foreground" />
         <MiniMap

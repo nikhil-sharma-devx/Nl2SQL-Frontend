@@ -2,11 +2,14 @@
  * SqlPreview — displays generated SQL with syntax highlighting.
  * (Logic unchanged; restyled with shadcn primitives.)
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Check, X, Zap, Copy, Loader2, BookOpen, Send, Lightbulb } from 'lucide-react';
 import type { QueryResponse } from '../types/query.types';
 import { explainSQL, getSuggestions, saveSQLVersion, executeSQL, getSQLVersions } from '../api/client';
-import VersionedSQLDisplay, { SQLVersion } from './VersionedSQLDisplay';
+import type { SQLVersion } from './VersionedSQLDisplay';
+
+// react-syntax-highlighter is heavy — load it with the first SQL block
+const VersionedSQLDisplay = lazy(() => import('./VersionedSQLDisplay'));
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -39,6 +42,10 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
 
   useEffect(() => {
     if (!messageId) return;
+    // Optimistic/not-yet-persisted messages carry a client timestamp id
+    // (Date.now()) that overflows the DB's 32-bit message id — they can't have
+    // saved versions yet, so skip the fetch entirely.
+    if (messageId > 2_147_483_647) return;
     getSQLVersions(messageId)
       .then((data) => {
         if (!data.versions || data.versions.length === 0) return;
@@ -146,7 +153,9 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
     <div>
       {/* Versioned SQL Display */}
       <div className="mb-4">
-        <VersionedSQLDisplay versions={versions} onReRun={handleReRunVersion} isRunning={isRunning} />
+        <Suspense fallback={<div className="h-24 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
+          <VersionedSQLDisplay versions={versions} onReRun={handleReRunVersion} isRunning={isRunning} />
+        </Suspense>
       </div>
 
       {/* Action Buttons */}

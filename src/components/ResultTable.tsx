@@ -2,9 +2,16 @@
  * ResultTable — renders the database result set as a paginated, sortable table.
  * (Logic unchanged; restyled.)
  */
-import { useState, useMemo } from 'react';
-import { Play, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, Download } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { Play, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, Download, Check } from 'lucide-react';
 import type { QueryResponse } from '../types/query.types';
+
+// Above this many rows on a single page we virtualize the tbody so the DOM node
+// count stays constant regardless of result size (dependency-free windowing).
+const VIRTUALIZE_THRESHOLD = 100;
+const ROW_HEIGHT = 37; // px — must match the rendered <td> line-height + padding
+const VIRTUAL_VIEWPORT = 560; // px — max scroll-area height when virtualizing
+const OVERSCAN = 8;
 
 interface ResultTableProps {
   response: QueryResponse;
@@ -25,6 +32,10 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [copiedCell, setCopiedCell] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayResult = editedResult?.results || response.execution_result;
   const displayError = editedResult?.error || response.execution_error;
@@ -77,6 +88,26 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
       return 0;
     });
   }, [executionResult, sortConfig]);
+
+  // A column is numeric when every non-null value in it is a number. Numeric
+  // columns are right-aligned (header + cells) so digits line up (item 17).
+  const numericColumns = useMemo(() => {
+    const nums = new Set<string>();
+    const cols = Object.keys(executionResult[0] ?? {});
+    for (const col of cols) {
+      let sawValue = false;
+      let allNumeric = true;
+      for (const row of executionResult) {
+        const v = row[col];
+        if (v === null || v === undefined) continue;
+        sawValue = true;
+        if (typeof v !== 'number') { allNumeric = false; break; }
+      }
+      if (sawValue && allNumeric) nums.add(col);
+    }
+    return nums;
+  }, [executionResult]);
+
   if (!sortedData || sortedData.length === 0) {
     return null;
   }
@@ -108,6 +139,32 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
     URL.revokeObjectURL(url);
   };
 
+  // Excel export without a dependency: Excel opens an HTML <table> saved with a
+  // .xls extension and the ms-excel MIME type, preserving columns/rows.
+  const exportExcel = () => {
+    const cols = Object.keys(sortedData[0]);
+    const escapeHtml = (v: unknown) => {
+      if (v === null || v === undefined) return '';
+      return String(v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    };
+    const header = `<tr>${cols.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
+    const body = sortedData
+      .map((row) => `<tr>${cols.map((c) => `<td>${escapeHtml(row[c])}</td>`).join('')}</tr>`)
+      .join('');
+    const html =
+      `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">` +
+      `<head><meta charset="utf-8"></head><body><table border="1">${header}${body}</table></body></html>`;
+    const url = URL.createObjectURL(new Blob([html], { type: 'application/vnd.ms-excel' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'results.xls';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSort = (column: string) => {
     let direction: SortDirection = 'asc';
     if (sortConfig && sortConfig.column === column) {
@@ -132,6 +189,58 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
 
   const columns = Object.keys(executionResult[0]);
 
+  // ── Virtualization: only window when a single page holds many rows ──────────
+  const virtualize = paginatedData.length > VIRTUALIZE_THRESHOLD;
+  const visibleCount = Math.ceil(VIRTUAL_VIEWPORT / ROW_HEIGHT);
+  const startRow = virtualize ? Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN) : 0;
+  const endRow = virtualize
+    ? Math.min(paginatedData.length, startRow + visibleCount + OVERSCAN * 2)
+    : paginatedData.length;
+  const rowsToRender = paginatedData.slice(startRow, endRow);
+  const topPad = startRow * ROW_HEIGHT;
+  const bottomPad = (paginatedData.length - endRow) * ROW_HEIGHT;
+
+  // Copy a cell's raw underlying value (not the formatted display) to the
+  // clipboard, with ~1s of transient feedback keyed by "rowIndex:col" (item 17).
+  const handleCopyCell = (row: Record<string, any>, col: string, cellKey: string) => {
+    const raw = row[col];
+    const text = raw === null || raw === undefined ? '' : String(raw);
+    navigator.clipboard?.writeText(text);
+    setCopiedCell(cellKey);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopiedCell(null), 1000);
+  };
+
+  const renderCell = (row: Record<string, any>, col: string, rowKey: number) => {
+    const cellKey = `${rowKey}:${col}`;
+    const isCopied = copiedCell === cellKey;
+    const isNull = row[col] === null || row[col] === undefined;
+    return (
+      <td
+        key={col}
+        onClick={() => handleCopyCell(row, col, cellKey)}
+        title="Click to copy"
+        className={`relative cursor-pointer px-4 py-2.5 font-mono text-xs text-muted-foreground transition-colors group-hover:text-foreground/85 ${
+          numericColumns.has(col) ? 'text-right' : ''
+        } ${isCopied ? 'bg-primary/15 ring-1 ring-inset ring-primary/40' : ''}`}
+      >
+        {!isNull ? (
+          <span className={typeof row[col] === 'number' ? 'text-violet-text font-medium tabular-nums' : 'text-primary/90'}>
+            {typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col])}
+          </span>
+        ) : (
+          <span className="italic text-muted-foreground/55">NULL</span>
+        )}
+        {isCopied && !isNull && (
+          <span className="pointer-events-none absolute right-1.5 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded-md border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary shadow-sm">
+            <Check className="h-2.5 w-2.5" />
+            Copied
+          </span>
+        )}
+      </td>
+    );
+  };
+
   return (
     <div className="mt-6">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -141,28 +250,50 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
           <span className="font-mono text-[10px] text-muted-foreground/55">
             ({executionResult.length} rows{response.response_time_ms ? ` · ${response.response_time_ms}ms` : ''})
           </span>
+          {virtualize && (
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-primary" title="Rows are virtualized for smooth scrolling">
+              virtualized
+            </span>
+          )}
         </div>
-        <button
-          onClick={exportCSV}
-          title="Export to CSV"
-          className="flex items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
-        >
-          <Download className="h-3.5 w-3.5" />
-          CSV
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={exportCSV}
+            title="Export to CSV"
+            className="flex items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" />
+            CSV
+          </button>
+          <button
+            onClick={exportExcel}
+            title="Export to Excel"
+            className="flex items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Excel
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto custom-scrollbar rounded-xl border border-border bg-card/60 shadow-lg backdrop-blur-md">
+      <div
+        ref={scrollRef}
+        onScroll={virtualize ? (e) => setScrollTop((e.target as HTMLDivElement).scrollTop) : undefined}
+        className="overflow-auto custom-scrollbar rounded-xl border border-border bg-card/60 shadow-lg backdrop-blur-md"
+        style={virtualize ? { maxHeight: VIRTUAL_VIEWPORT } : undefined}
+      >
         <table className="w-full text-sm">
-          <thead className="border-b border-border bg-background/70">
+          <thead className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column}
                   onClick={() => handleSort(column)}
-                  className="cursor-pointer select-none whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-foreground/85 transition-colors hover:bg-foreground/5"
+                  className={`cursor-pointer select-none whitespace-nowrap px-4 py-3 text-xs font-semibold text-foreground/85 transition-colors hover:bg-foreground/5 ${
+                    numericColumns.has(column) ? 'text-right' : 'text-left'
+                  }`}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className={`flex items-center gap-1 ${numericColumns.has(column) ? 'justify-end' : ''}`}>
                     {column}
                     {getSortIcon(column)}
                   </div>
@@ -171,21 +302,13 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {paginatedData.map((row: Record<string, any>, idx: number) => (
-              <tr key={idx} className="group transition-colors hover:bg-foreground/5">
-                {columns.map((col) => (
-                  <td key={col} className="px-4 py-2.5 font-mono text-xs text-muted-foreground transition-colors group-hover:text-foreground/85">
-                    {row[col] !== null && row[col] !== undefined ? (
-                      <span className={typeof row[col] === 'number' ? 'text-violet-text font-medium' : 'text-primary/90'}>
-                        {String(row[col])}
-                      </span>
-                    ) : (
-                      <span className="italic text-muted-foreground/55">NULL</span>
-                    )}
-                  </td>
-                ))}
+            {topPad > 0 && <tr style={{ height: topPad }} aria-hidden="true"><td colSpan={columns.length} className="p-0" /></tr>}
+            {rowsToRender.map((row: Record<string, any>, idx: number) => (
+              <tr key={startRow + idx} className="group transition-colors hover:bg-foreground/5" style={virtualize ? { height: ROW_HEIGHT } : undefined}>
+                {columns.map((col) => renderCell(row, col, startRow + idx))}
               </tr>
             ))}
+            {bottomPad > 0 && <tr style={{ height: bottomPad }} aria-hidden="true"><td colSpan={columns.length} className="p-0" /></tr>}
           </tbody>
         </table>
       </div>

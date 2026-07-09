@@ -3,6 +3,7 @@ import { X, Zap, Activity, TrendingUp, DollarSign } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getUsage } from '../api/client';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/components/ui/dialog';
 
 interface Props {
   open: boolean;
@@ -26,6 +27,8 @@ function fmt(n: number) {
 export default function UsageModal({ open, onClose }: Props) {
   const [period, setPeriod] = useState<Period>('7d');
   const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, contentRef);
 
   useEffect(() => {
     if (!open) return;
@@ -80,7 +83,14 @@ export default function UsageModal({ open, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+      <div
+        ref={contentRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Usage"
+        tabIndex={-1}
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl focus:outline-none"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>

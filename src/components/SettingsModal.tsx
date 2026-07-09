@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Settings, Database, FileText, Shield, Lock, Sliders } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/components/ui/dialog';
 import GeneralSettings from '../features/settings/General';
 import SqlStyleSettings from '../features/settings/SqlStyle';
 import InstructionsSettings from '../features/settings/Instructions';
@@ -25,6 +26,8 @@ type TabId = (typeof TABS)[number]['id'];
 export default function SettingsModal({ open, onClose }: Props) {
   const [tab, setTab] = useState<TabId>('general');
   const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, contentRef);
 
   // Close on overlay click
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -52,7 +55,14 @@ export default function SettingsModal({ open, onClose }: Props) {
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
     >
-      <div className="relative flex w-full max-w-5xl h-[85vh] max-h-[800px] rounded-3xl border border-border bg-popover shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden animate-slide-up flex-col md:flex-row">
+      <div
+        ref={contentRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        tabIndex={-1}
+        className="relative flex w-full max-w-5xl h-[85vh] max-h-[800px] rounded-3xl border border-border bg-popover shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden animate-slide-up flex-col md:flex-row focus:outline-none"
+      >
         
         {/* Sidebar */}
         <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-card/50 flex flex-col shrink-0">

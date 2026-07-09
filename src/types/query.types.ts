@@ -29,7 +29,9 @@ export interface QueryResponse {
   query_complexity?: number;
   prompt_version?: string;
   retrieval_method?: string;
-  response_time_ms?: number;
+  // API can return null for timing fields; match api/client.ts's QueryResponse
+  // so session messages (SessionDetail) are assignable to ChatMessage[].
+  response_time_ms?: number | null;
   suggested_chart?: {
     type: string;
     x_axis: string;

@@ -4,8 +4,9 @@
  */
 import { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ChevronLeft, ChevronRight, Pencil, Play, Check, X, Code2, Copy } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export interface SQLVersion {
   version: number;
@@ -22,6 +23,9 @@ interface VersionedSQLDisplayProps {
 }
 
 const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDisplayProps) => {
+  const { theme } = useTheme();
+  const isLightTheme = theme === 'light' || theme === 'claude';
+  const highlighterStyle = isLightTheme ? oneLight : atomDark;
   const [currentIndex, setCurrentIndex] = useState(versions.length - 1);
   const [isEditing, setIsEditing] = useState(false);
   const [editedSql, setEditedSql] = useState('');
@@ -161,7 +165,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
         ) : (
           <SyntaxHighlighter
             language="sql"
-            style={atomDark}
+            style={highlighterStyle}
             customStyle={{ margin: 0, padding: '1rem', fontSize: '0.85rem', borderRadius: 0, background: 'transparent' }}
           >
             {currentVersion.sql}

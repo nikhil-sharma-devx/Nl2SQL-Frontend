@@ -3,19 +3,24 @@ import { useSettings } from '../../hooks/useSettings';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
+import InfoTip from '../../components/InfoTip';
 
 type RadioGroupProps = {
   label: string;
+  info?: string;
   name: string;
   options: { value: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
 };
 
-function RadioGroup({ label, name, options, value, onChange }: RadioGroupProps) {
+function RadioGroup({ label, info, name, options, value, onChange }: RadioGroupProps) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        {info && <InfoTip text={info} />}
+      </Label>
       <div className="flex gap-3">
         {options.map(opt => (
           <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
@@ -70,6 +75,7 @@ export default function SqlStyleSettings() {
     <div className="space-y-5 max-w-lg">
       <RadioGroup
         label="Keyword Case"
+        info="Controls whether SQL keywords like SELECT, FROM, WHERE are output in uppercase or lowercase. Uppercase is the conventional SQL style."
         name="keyword_case"
         options={[
           { value: 'upper', label: 'UPPER (SELECT, FROM…)' },
@@ -81,6 +87,7 @@ export default function SqlStyleSettings() {
 
       <RadioGroup
         label="CTE Preference"
+        info="How the AI structures complex multi-step queries. CTEs (WITH ... AS) are more readable; subqueries are more compact and supported everywhere."
         name="cte_pref"
         options={[
           { value: 'cte', label: 'CTE (WITH …)' },
@@ -92,6 +99,7 @@ export default function SqlStyleSettings() {
 
       <RadioGroup
         label="Alias Style"
+        info="Whether column or table aliases use the explicit AS keyword (SELECT col AS alias) or are written directly without it (SELECT col alias)."
         name="alias_style"
         options={[
           { value: 'as', label: 'Explicit AS keyword' },
@@ -102,7 +110,10 @@ export default function SqlStyleSettings() {
       />
 
       <div className="space-y-1.5">
-        <Label>Indent Width</Label>
+        <Label>
+          Indent Width
+          <InfoTip text="Number of spaces used per indentation level in generated SQL. 2 is standard for most SQL formatters; 4 is common in some enterprise environments." />
+        </Label>
         <Input
           type="number"
           min={1}

@@ -4,21 +4,27 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { cn } from '@/lib/utils';
+import InfoTip from '../../components/InfoTip';
 
 function RadioGroup<T extends string>({
   label,
+  info,
   value,
   options,
   onChange,
 }: {
   label: string;
+  info?: string;
   value: T;
   options: { value: T; label: string; description?: string }[];
   onChange: (v: T) => void;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        {info && <InfoTip text={info} />}
+      </Label>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
           <button
@@ -89,7 +95,10 @@ export default function GeneralSettings() {
   return (
     <div className="space-y-5 max-w-lg">
       <div className="space-y-1.5">
-        <Label>Default SQL Dialect</Label>
+        <Label>
+          Default SQL Dialect
+          <InfoTip text="The SQL dialect the AI targets when generating queries (e.g. postgres, mysql, bigquery). Leave blank to let the model choose based on context." />
+        </Label>
         <Input
           value={form.default_dialect}
           onChange={(e) => setForm(f => ({ ...f, default_dialect: e.target.value }))}
@@ -99,7 +108,10 @@ export default function GeneralSettings() {
       </div>
 
       <div className="space-y-1.5">
-        <Label>Max Result Rows</Label>
+        <Label>
+          Max Result Rows
+          <InfoTip text="Maximum rows returned per query execution. Higher values can slow down the UI for large result sets. Default is 1000." />
+        </Label>
         <Input
           type="number"
           min={1}
@@ -117,11 +129,17 @@ export default function GeneralSettings() {
           onChange={(e) => setForm(f => ({ ...f, auto_execute: e.target.checked }))}
           className="h-4 w-4 rounded border-border accent-primary"
         />
-        <Label htmlFor="auto-exec">Auto-execute generated SQL</Label>
+        <Label htmlFor="auto-exec">
+          Auto-execute generated SQL
+          <InfoTip text="When enabled, generated SQL is run immediately after being produced — no confirmation step. Disable to review SQL before executing." />
+        </Label>
       </div>
 
       <div className="space-y-1.5">
-        <Label>Default Model</Label>
+        <Label>
+          Default Model
+          <InfoTip text="The AI model used for SQL generation. Leave blank to use the model currently selected in the session switcher or the server default." />
+        </Label>
         <Input
           value={form.default_model}
           onChange={(e) => setForm(f => ({ ...f, default_model: e.target.value }))}
@@ -133,23 +151,25 @@ export default function GeneralSettings() {
 
       <RadioGroup
         label="Font Size"
+        info="Sets the base font size for the entire app. Small = 13px, Medium = 16px (default), Large = 18px. All spacing scales with it since Tailwind uses rem."
         value={form.font_size}
         onChange={(v) => setForm(f => ({ ...f, font_size: v }))}
         options={[
-          { value: 'small', label: 'Small', description: 'Compact text for dense layouts' },
-          { value: 'medium', label: 'Medium', description: 'Default comfortable reading size' },
-          { value: 'large', label: 'Large', description: 'Easier to read on high-DPI screens' },
+          { value: 'small', label: 'Small', description: 'Compact text (13px) — fits more content' },
+          { value: 'medium', label: 'Medium', description: 'Default (16px) — balanced readability' },
+          { value: 'large', label: 'Large', description: 'Easier to read (18px) — ideal for high-DPI' },
         ]}
       />
 
       <RadioGroup
         label="UI Density"
+        info="Scales all padding, margins, and gaps across the app. Compact = tighter layout showing more items. Spacious = more breathing room, easier to click."
         value={form.ui_density}
         onChange={(v) => setForm(f => ({ ...f, ui_density: v }))}
         options={[
-          { value: 'compact', label: 'Compact', description: 'More content on screen at once' },
+          { value: 'compact', label: 'Compact', description: 'Tighter spacing — more content visible' },
           { value: 'comfortable', label: 'Comfortable', description: 'Balanced spacing (default)' },
-          { value: 'spacious', label: 'Spacious', description: 'Generous padding, easier to click' },
+          { value: 'spacious', label: 'Spacious', description: 'Generous padding — easier to navigate' },
         ]}
       />
 

@@ -1,5 +1,32 @@
 import axios, { AxiosError } from 'axios';
 import { getToken } from '../auth/tokenStore';
+import { toast } from '../components/ui/toast';
+
+/**
+ * Typed error raised for every failed API call.
+ * Mirrors the backend error envelope: {code, message, request_id, retry_after}.
+ */
+export class ApiError extends Error {
+  readonly code: string;
+  readonly status: number | null;
+  readonly requestId: string | null;
+  readonly retryAfter: number | null;
+
+  constructor(opts: {
+    message: string;
+    code?: string;
+    status?: number | null;
+    requestId?: string | null;
+    retryAfter?: number | null;
+  }) {
+    super(opts.message);
+    this.name = 'ApiError';
+    this.code = opts.code ?? 'UNKNOWN_ERROR';
+    this.status = opts.status ?? null;
+    this.requestId = opts.requestId ?? null;
+    this.retryAfter = opts.retryAfter ?? null;
+  }
+}
 
 // Query types
 export interface QueryRequest {
@@ -29,6 +56,35 @@ export interface QueryResponse {
   } | null;
   follow_up_questions?: string[];
   intent_type?: string | null;
+  response_time_ms?: number | null;
+  /** Per-stage latency in ms: retrieval, table_selection, generation, validation, execution. */
+  stage_timings?: Record<string, number> | null;
+}
+
+/**
+ * Pipeline stages streamed over SSE. Mirrors the backend `PipelineStage`
+ * union in `core/models/query.py` — keep both in sync.
+ */
+export type PipelineStage =
+  | 'initializing'
+  | 'retrieving_schema'
+  | 'schema_retrieved'
+  | 'generating_sql'
+  | 'sql_generated'
+  | 'validating_sql'
+  | 'executing_sql';
+
+/** A single Server-Sent Event frame from POST /query/stream. */
+export interface PipelineStageEvent {
+  status: 'started' | 'progress' | 'complete' | 'error';
+  stage?: PipelineStage;
+  tables?: string[];
+  sql?: string;
+  cached?: boolean;
+  data?: QueryResponse;
+  response_time_ms?: number;
+  error?: string;
+  type?: string;
 }
 
 export interface ExplainResponse {
@@ -74,6 +130,43 @@ export interface SchemaRefreshResponse {
   message: string;
   tables_found: number;
   chunks_ingested: number;
+}
+
+// Schema catalog (per-user Schema page read model)
+export interface CatalogColumn {
+  name: string;
+  data_type: string;
+  nullable: boolean;
+  primary_key: boolean;
+  foreign_key: string | null;
+  description: string | null;
+}
+
+export interface CatalogTable {
+  id: number;
+  schema_name: string;
+  table_name: string;
+  source: 'reflected' | 'uploaded';
+  columns: CatalogColumn[];
+  description: string | null;
+  pinned: boolean;
+  is_new: boolean;
+  last_seen_at: string | null;
+}
+
+export interface SchemaTablesResponse {
+  database_name: string | null;
+  dialect: string;
+  source: 'reflected' | 'uploaded' | 'merged';
+  last_synced_at: string | null;
+  tables: CatalogTable[];
+}
+
+export interface SchemaSyncResponse {
+  message: string;
+  changed: boolean;
+  new_tables: string[];
+  total_tables: number;
 }
 
 // Config types
@@ -186,33 +279,79 @@ export const forceReauth = (): void => {
   }
 };
 
+/** Extract the human-readable message from a backend error payload. */
+const extractErrorMessage = (data: any, status: number): string => {
+  if (data) {
+    // FastAPI ValidationError returns detail as an array of objects
+    if (Array.isArray(data.detail)) {
+      return data.detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+    }
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data.message === 'string') return data.message;
+  }
+  return `Error: ${status}`;
+};
+
+/** Map an axios failure to a typed ApiError carrying the backend envelope. */
+const toApiError = (error: AxiosError<any>): ApiError => {
+  const status = error.response?.status ?? null;
+  const data = error.response?.data;
+  const headers = error.response?.headers as Record<string, string> | undefined;
+  const retryAfterHeader = headers?.['retry-after'];
+
+  return new ApiError({
+    message: error.response
+      ? extractErrorMessage(data, error.response.status)
+      : error.message || 'Network error occurred',
+    code: data?.code ?? (status ? `HTTP_${status}` : 'NETWORK_ERROR'),
+    status,
+    requestId: data?.request_id ?? headers?.['x-request-id'] ?? null,
+    retryAfter:
+      data?.retry_after ?? (retryAfterHeader ? parseInt(retryAfterHeader, 10) : null),
+  });
+};
+
+/** Show a central toast for an ApiError (skips 401 — handled by re-auth redirect). */
+const notifyApiError = (err: ApiError): void => {
+  if (err.status === 401) return;
+  const title =
+    err.status === 429
+      ? `Slow down — rate limit hit${err.retryAfter ? `, retry in ${err.retryAfter}s` : ''}`
+      : err.message;
+  toast({
+    title,
+    description: err.requestId ? `Reference: ${err.requestId}` : undefined,
+    variant: 'error',
+  });
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      forceReauth();
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        forceReauth();
+        return Promise.reject(toApiError(error));
+      }
+      const apiError = toApiError(error);
+      notifyApiError(apiError);
+      return Promise.reject(apiError);
     }
     return Promise.reject(error);
   },
 );
 
-// Error handler helper
+// Error handler helper — accepts both ApiError (from the interceptor) and raw
+// axios/unknown errors (e.g. from fetch-based streaming).
 export const handleApiError = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    return error.requestId ? `${error.message} (Ref: ${error.requestId})` : error.message;
+  }
+
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<{ detail?: any; message?: string }>;
     if (axiosError.response?.data) {
-      const data = axiosError.response.data;
-
-      // FastAPI ValidationError returns detail as an array of objects
-      if (Array.isArray(data.detail)) {
-        return data.detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
-      }
-
-      if (typeof data.detail === 'string') {
-        return data.detail;
-      }
-
-      return data.message || `Error: ${axiosError.response.status}`;
+      return extractErrorMessage(axiosError.response.data, axiosError.response.status);
     }
     return axiosError.message || 'Network error occurred';
   }
@@ -356,6 +495,36 @@ export const getVisualizeSchema = async (schemaName = 'public'): Promise<any> =>
     params: { schema_name: schemaName },
     timeout: 120000, // 2 min — allow extra room for cold-start / pooled DB connections
   });
+  return response.data;
+};
+
+// ── Schema catalog (per-user Schema page) ─────────────────────────────────────
+
+export const getSchemaTables = async (schemaName?: string): Promise<SchemaTablesResponse> => {
+  const response = await apiClient.get<SchemaTablesResponse>('/schema/tables', {
+    params: schemaName ? { schema_name: schemaName } : undefined,
+  });
+  return response.data;
+};
+
+export const syncSchema = async (schemaName = 'public'): Promise<SchemaSyncResponse> => {
+  const response = await apiClient.post<SchemaSyncResponse>('/schema/sync', null, {
+    params: { schema_name: schemaName },
+    timeout: 120000,
+  });
+  return response.data;
+};
+
+export const setTableDescription = async (
+  id: number,
+  user_description: string | null,
+): Promise<CatalogTable> => {
+  const response = await apiClient.patch<CatalogTable>(`/schema/tables/${id}`, { user_description });
+  return response.data;
+};
+
+export const markTablesSeen = async (table_ids: number[]): Promise<{ updated: number }> => {
+  const response = await apiClient.post<{ updated: number }>('/schema/tables/seen', { table_ids });
   return response.data;
 };
 
@@ -520,6 +689,39 @@ export const analyticsAPI = {
     const response = await apiClient.delete('/analytics/reset');
     return response.data;
   },
+  getCacheStats: async (): Promise<CacheStats> => {
+    const response = await apiClient.get('/analytics/cache-stats');
+    return response.data;
+  },
+  getLatencyBreakdown: async (): Promise<LatencyBreakdown> => {
+    const response = await apiClient.get('/analytics/latency-breakdown');
+    return response.data;
+  },
+};
+
+export interface LatencyBreakdown {
+  samples: number;
+  avg_stage_ms: Record<string, number>;
+}
+
+export interface CacheStats {
+  exact_hits: number;
+  semantic_hits: number;
+  misses: number;
+  total_lookups: number;
+  exact_hit_rate: number;
+  semantic_hit_rate: number;
+  overall_hit_rate: number;
+}
+
+export interface DeepHealthResponse {
+  status: 'ok' | 'degraded';
+  checks: Record<string, { ok: boolean; latency_ms: number; error?: string | null }>;
+}
+
+export const getDeepHealth = async (): Promise<DeepHealthResponse> => {
+  const response = await apiClient.get<DeepHealthResponse>('/health/deep');
+  return response.data;
 };
 
 // ── Profile / BYOK API ────────────────────────────────────────────────────────

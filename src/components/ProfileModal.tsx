@@ -25,6 +25,7 @@ import {
   type APIKeyStatusItem,
 } from '../api/client';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/components/ui/dialog';
 
 interface Props {
   open: boolean;
@@ -198,6 +199,8 @@ export default function ProfileModal({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, contentRef);
 
   useEffect(() => {
     if (!open) return;
@@ -232,7 +235,14 @@ export default function ProfileModal({ open, onClose }: Props) {
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
     >
-      <div className="relative w-full max-w-lg rounded-3xl border border-border bg-popover shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden animate-slide-up">
+      <div
+        ref={contentRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Profile and API keys"
+        tabIndex={-1}
+        className="relative w-full max-w-lg rounded-3xl border border-border bg-popover shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden animate-slide-up focus:outline-none"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3.5">

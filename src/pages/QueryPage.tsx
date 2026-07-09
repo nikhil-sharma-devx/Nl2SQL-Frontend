@@ -3,15 +3,17 @@
  * Thin composition layer over the useChat hook + extracted components.
  * (Logic/data-flow unchanged; restyled.)
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useChat } from '../hooks/useChat';
 import { useSettings } from '../hooks/useSettings';
 import { handleApiError, submitFeedback } from '../api/client';
 import ChatWindow from '../components/ChatWindow';
 import QueryInput from '../components/QueryInput';
-import SchemaGraph from '../components/SchemaGraph';
 import QueryBuilder from '../components/QueryBuilder';
 import { cn } from '@/lib/utils';
+
+// React Flow is heavy — load it only when the schema graph panel opens
+const SchemaGraph = lazy(() => import('../components/SchemaGraph'));
 
 const QueryPage = () => {
   const {
@@ -103,7 +105,15 @@ const QueryPage = () => {
 
           {showGraph && (
             <div className="flex h-full w-1/2 flex-col transition-all duration-300 animate-slide-up">
-              <SchemaGraph highlightedTables={highlightedTables} />
+              <Suspense
+                fallback={
+                  <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card/60">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-transparent motion-reduce:animate-none" />
+                  </div>
+                }
+              >
+                <SchemaGraph highlightedTables={highlightedTables} />
+              </Suspense>
             </div>
           )}
 

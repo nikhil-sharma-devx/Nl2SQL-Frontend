@@ -196,9 +196,24 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['templates'] }); setEditing(false); },
   });
 
+  // Optimistic delete (TanStack Query v5): remove this template from every
+  // cached ['templates', …] list at once, roll back on error, invalidate after.
   const deleteMutation = useMutation({
     mutationFn: () => deleteTemplate(template.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['templates'] });
+      const previous = queryClient.getQueriesData<{ items: QueryTemplate[]; total: number }>({ queryKey: ['templates'] });
+      queryClient.setQueriesData<{ items: QueryTemplate[]; total: number }>({ queryKey: ['templates'] }, (old) =>
+        old
+          ? { ...old, items: old.items.filter((t) => t.id !== template.id), total: Math.max(0, old.total - 1) }
+          : old,
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      context?.previous.forEach(([key, data]) => queryClient.setQueryData(key, data));
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
   });
 
   function formValuesToPayload(v: { name: string; description: string; template_nl: string; template_sql: string; tags: string }) {
@@ -346,11 +361,13 @@ export default function TemplatesPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
+  const [limit, setLimit] = useState(50);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['templates', search],
-    queryFn: () => getTemplates({ search: search || undefined, limit: 50 }),
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['templates', search, limit],
+    queryFn: () => getTemplates({ search: search || undefined, limit }),
     staleTime: 15_000,
+    placeholderData: (prev) => prev,
   });
 
   const createMutation = useMutation({
@@ -425,6 +442,13 @@ export default function TemplatesPage() {
       ) : (
         <div className="space-y-3">
           {items.map(t => <TemplateCard key={t.id} template={t} />)}
+          {(data?.total ?? 0) > items.length && limit < 100 && (
+            <div className="flex justify-center">
+              <Button variant="outline" onClick={() => setLimit(100)} disabled={isFetching}>
+                Load more ({items.length} of {data?.total})
+              </Button>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground text-right">{data?.total ?? items.length} template{(data?.total ?? items.length) !== 1 ? 's' : ''}</p>
         </div>
       )}

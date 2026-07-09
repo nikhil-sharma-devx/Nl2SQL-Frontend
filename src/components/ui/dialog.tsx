@@ -6,6 +6,64 @@ import { cn } from "@/lib/utils";
 /**
  * Minimal accessible modal dialog (shadcn-style API) without external deps.
  */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Traps keyboard focus within `containerRef` while `active`, focuses the first
+ * focusable element (or the container) on activation, and restores focus to the
+ * previously-focused element on deactivation. Used by the custom modal overlays
+ * (Settings/Profile/Usage/Shortcuts) that don't use the Dialog primitive.
+ */
+export function useFocusTrap(
+  active: boolean,
+  containerRef: React.RefObject<HTMLElement | null>,
+) {
+  React.useEffect(() => {
+    if (!active) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    const getFocusable = () =>
+      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
+
+    // Initial focus: first focusable element, else the container itself.
+    (getFocusable()[0] ?? container).focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const items = getFocusable();
+      if (items.length === 0) {
+        e.preventDefault();
+        container.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (e.shiftKey) {
+        if (activeEl === first || !container.contains(activeEl)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (activeEl === last || !container.contains(activeEl)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    container.addEventListener('keydown', onKeyDown);
+    return () => {
+      container.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [active, containerRef]);
+}
+
 interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;

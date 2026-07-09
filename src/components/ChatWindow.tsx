@@ -4,7 +4,7 @@
  * Displays user questions and assistant responses including SQL previews,
  * result tables, validation errors, and schema info. (Logic unchanged; restyled.)
  */
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Loader2,
@@ -25,7 +25,8 @@ import { cn } from '@/lib/utils';
 import SqlPreview from './SqlPreview';
 import ResultTable from './ResultTable';
 import FeedbackPanel from './FeedbackPanel';
-import DataChart from './DataChart';
+// recharts is heavy — load it only when a message actually has a chart
+const DataChart = lazy(() => import('./DataChart'));
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { createSavedQuery } from '../api/client';
@@ -173,10 +174,12 @@ const ChatWindow = ({
 
               {/* Data Chart */}
               {msg.response.suggested_chart && msg.response.suggested_chart.type !== 'none' && (
-                <DataChart
-                  data={editedResults?.[msg.id]?.results || msg.response.execution_result || []}
-                  config={msg.response.suggested_chart}
-                />
+                <Suspense fallback={<div className="h-40 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
+                  <DataChart
+                    data={editedResults?.[msg.id]?.results || msg.response.execution_result || []}
+                    config={msg.response.suggested_chart}
+                  />
+                </Suspense>
               )}
 
               {/* Execution Results */}

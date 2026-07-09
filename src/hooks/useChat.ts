@@ -17,6 +17,7 @@ import {
   type AddMessageRequest,
 } from '../api/client';
 import type { ChatMessage } from '../types/query.types';
+import { guessChartConfig as guessChartConfigImpl } from '../utils/chart';
 
 /** A single step in the live "thinking" trace. */
 export interface ThinkingStep {
@@ -340,26 +341,8 @@ export function useChat(): UseChatReturn {
     }
   }, [currentSession?.messages, pendingQuestion]);
 
-  const guessChartConfig = (data: any[] | null) => {
-    if (!data || data.length === 0) return null;
-    const firstRow = data[0];
-    const keys = Object.keys(firstRow);
-    if (keys.length < 2) return null;
-
-    const numericKeys = keys.filter((k) => typeof firstRow[k] === 'number');
-    const nonNumericKeys = keys.filter((k) => typeof firstRow[k] !== 'number');
-
-    if (numericKeys.length > 0) {
-      const yAxis = numericKeys[0];
-      const xAxis = nonNumericKeys.length > 0 ? nonNumericKeys[0] : keys.filter((k) => k !== yAxis)[0];
-      return {
-        type: 'bar',
-        x_axis: xAxis,
-        y_axis: yAxis,
-      };
-    }
-    return null;
-  };
+  // Thin wrapper over the extracted, unit-tested pure helper.
+  const guessChartConfig = (data: any[] | null) => guessChartConfigImpl(data);
 
   const addDirectSqlMessage = async (sql: string, nlPrompt: string) => {
     setValidationError(null);

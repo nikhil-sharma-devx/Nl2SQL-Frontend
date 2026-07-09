@@ -4,6 +4,7 @@ import apiClient from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
+import InfoTip from '../../components/InfoTip';
 
 const CHAR_CAP = 2000;
 
@@ -60,7 +61,10 @@ export default function InstructionsSettings() {
           onChange={(e) => setEnabled(e.target.checked)}
           className="h-4 w-4 rounded border-border accent-primary"
         />
-        <Label htmlFor="instr-enabled">Enable custom instructions</Label>
+        <Label htmlFor="instr-enabled">
+          Enable custom instructions
+          <InfoTip text="When enabled, the text below is prepended to every AI generation prompt as persistent context. Disable to temporarily pause instructions without deleting them." />
+        </Label>
       </div>
 
       <div className="space-y-1">

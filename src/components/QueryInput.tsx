@@ -166,14 +166,31 @@ const QueryInput = ({
             }}
             rows={1}
             disabled={isLoading}
+            role="combobox"
+            aria-expanded={showSuggestions && suggestions.length > 0}
+            aria-controls="query-autocomplete-listbox"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              showSuggestions && selectedIndex >= 0
+                ? `query-autocomplete-option-${selectedIndex}`
+                : undefined
+            }
           />
-          
+
           {/* Autocomplete suggestions dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 z-50 bottom-full mb-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-xl backdrop-blur-lg custom-scrollbar">
+            <div
+              id="query-autocomplete-listbox"
+              role="listbox"
+              aria-label="Query suggestions"
+              className="absolute left-0 right-0 z-50 bottom-full mb-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-xl backdrop-blur-lg custom-scrollbar"
+            >
               {suggestions.map((suggestion, idx) => (
                 <button
                   key={idx}
+                  id={`query-autocomplete-option-${idx}`}
+                  role="option"
+                  aria-selected={idx === selectedIndex}
                   type="button"
                   onClick={() => handleSelectSuggestion(suggestion)}
                   onMouseEnter={() => setSelectedIndex(idx)}
