@@ -139,14 +139,14 @@ const ChatWindow = ({
               />
 
               {/* Validation Errors */}
-              {!msg.response.is_valid && msg.response.validation_errors.length > 0 && (
+              {!msg.response.is_valid && (msg.response.validation_errors?.length ?? 0) > 0 && (
                 <div className="mb-4 rounded-xl border border-destructive-border bg-destructive-bg p-3">
                   <div className="mb-2 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-destructive-text" />
                     <span className="text-sm font-semibold text-destructive-text">Validation Errors</span>
                   </div>
                   <ul className="space-y-1">
-                    {msg.response.validation_errors.map((err, idx) => (
+                    {(msg.response.validation_errors ?? []).map((err, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-destructive-text/90">
                         <span className="text-destructive-text">•</span>
                         {err}
@@ -177,7 +177,7 @@ const ChatWindow = ({
                 <Suspense fallback={<div className="h-40 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
                   <DataChart
                     data={editedResults?.[msg.id]?.results || msg.response.execution_result || []}
-                    config={msg.response.suggested_chart}
+                    config={msg.response.suggested_chart as { type: string; x_axis: string; y_axis: string }}
                   />
                 </Suspense>
               )}

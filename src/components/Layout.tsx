@@ -32,7 +32,10 @@ import SettingsModal from './SettingsModal';
 import UsageModal from './UsageModal';
 import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
-import { getSessions, checkHealth } from '../api/client';
+import { getSessions, checkHealth, type SessionListResponse } from '../api/client';
+
+/** A single session row as returned by the sessions list endpoint. */
+type SessionSummary = SessionListResponse['sessions'][number];
 import { useAuth } from '../context/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -60,10 +63,10 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
 
 interface SessionGroup {
   label: string;
-  sessions: { id: string; title: string; updated_at: string; created_at: string }[];
+  sessions: SessionSummary[];
 }
 
-function groupByDate(sessions: { id: string; title: string; updated_at: string; created_at: string }[]): SessionGroup[] {
+function groupByDate(sessions: SessionSummary[]): SessionGroup[] {
   const now = new Date();
   const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const yesterdayMs = todayMs - 86_400_000;
@@ -218,7 +221,7 @@ const Layout = () => {
   const filteredSessions = useMemo(
     () =>
       chatSearch.trim()
-        ? allSessions.filter((s) => s.title.toLowerCase().includes(chatSearch.toLowerCase()))
+        ? allSessions.filter((s) => (s.title ?? '').toLowerCase().includes(chatSearch.toLowerCase()))
         : allSessions,
     [allSessions, chatSearch],
   );
@@ -438,7 +441,7 @@ const Layout = () => {
                             className="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
                           >
                             <MessagesSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/35 transition-colors group-hover:text-muted-foreground/60" />
-                            <span className="truncate leading-snug">{session.title}</span>
+                            <span className="truncate leading-snug">{session.title ?? 'New Chat'}</span>
                           </button>
                         ))}
                       </div>

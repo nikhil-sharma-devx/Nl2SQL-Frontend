@@ -32,12 +32,16 @@ function RouteFallback() {
 
 /** Redirect unauthenticated users to /auth */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isBootstrapping } = useAuth();
+  // While the initial session restore/refresh is in flight, don't bounce a
+  // still-valid (refreshable) session to the login page — show the loader.
+  if (isBootstrapping) return <RouteFallback />;
   return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isBootstrapping } = useAuth();
+  if (isBootstrapping) return <RouteFallback />;
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>

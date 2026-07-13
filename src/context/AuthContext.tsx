@@ -21,7 +21,12 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import apiClient from '../api/client';
-import { getToken as storedGetToken, setToken as storeSetToken } from '../auth/tokenStore';
+import {
+  getRefreshToken as storedGetRefreshToken,
+  getToken as storedGetToken,
+  setRefreshToken as storeSetRefreshToken,
+  setToken as storeSetToken,
+} from '../auth/tokenStore';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +42,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
+  /** True while the initial session restore (validate/refresh) is in flight. */
+  isBootstrapping: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
@@ -92,6 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
   const [isLoading, setIsLoading] = useState(false);
+  // On first load we may need to validate the access token or silently refresh
+  // it. Gate the router until that settles so a valid (refreshable) session
+  // isn't briefly bounced to the login page.
+  const [isBootstrapping, setIsBootstrapping] = useState<boolean>(
+    () => !!storedGetToken() || !!storedGetRefreshToken(),
+  );
 
   // Keep the module-level store and axios header in sync with React state.
   const setToken = useCallback((t: string | null) => {
@@ -104,28 +117,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // On mount: if we restored a token from localStorage, wire the axios header
-  // and silently validate it with the server. If the server rejects it (e.g.
-  // the user was deactivated or the secret was rotated), clear the session.
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const applyAuthResponse = useCallback(
+    (data: { access_token: string; refresh_token?: string; user: AuthUser }) => {
+      setToken(data.access_token);
+      // Persist the rotating refresh token so the axios interceptor can silently
+      // mint new access tokens once the short-lived one expires.
+      if (data.refresh_token) {
+        storeSetRefreshToken(data.refresh_token);
+      }
+      setUser(data.user);
+    },
+    [setToken],
+  );
+
+  // On mount: restore the session. If the access token is still valid, validate
+  // it with /auth/me. If it is missing/expired but a refresh token exists,
+  // silently exchange it for a fresh token pair (keeping the user logged in
+  // across the short access-token lifetime). Only clear state when neither works.
   useEffect(() => {
-    if (!token) return;
+    let cancelled = false;
 
-    // Prime the axios header so the first API call in any component works.
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const tryRefresh = async (): Promise<boolean> => {
+      const refresh = storedGetRefreshToken();
+      if (!refresh) return false;
+      try {
+        const { data } = await axios.post(`${API_BASE}/auth/refresh`, {
+          refresh_token: refresh,
+        });
+        if (!cancelled) applyAuthResponse(data);
+        return true;
+      } catch {
+        if (!cancelled) {
+          setToken(null);
+          storeSetRefreshToken(null);
+          setUser(null);
+        }
+        return false;
+      }
+    };
 
-    // Silent server-side validation — refresh user profile at the same time.
-    axios
-      .get<AuthUser>(`${API_BASE}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(({ data }) => {
-        setUser(data);
-      })
-      .catch(() => {
-        // Token was rejected (expired, revoked, or rotated secret) → log out.
-        setToken(null);
-        setUser(null);
-      });
+    const bootstrap = async () => {
+      const validAccess = loadValidToken();
+      if (validAccess) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${validAccess}`;
+        try {
+          const { data } = await axios.get<AuthUser>(`${API_BASE}/auth/me`, {
+            headers: { Authorization: `Bearer ${validAccess}` },
+          });
+          if (!cancelled) setUser(data);
+        } catch {
+          // Access token rejected — fall back to a refresh before giving up.
+          await tryRefresh();
+        }
+      } else if (storedGetRefreshToken()) {
+        await tryRefresh();
+      }
+      if (!cancelled) setIsBootstrapping(false);
+    };
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once on mount only
 
@@ -137,13 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(USER_KEY);
     }
   }, [user]);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  const applyAuthResponse = useCallback((data: { access_token: string; user: AuthUser }) => {
-    setToken(data.access_token);
-    setUser(data.user);
-  }, [setToken]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -202,11 +250,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      // Revokes the current login session server-side (identified by the JWT's
+      // sid), which also hard-revokes the refresh tokens bound to it.
       await apiClient.post('/auth/logout');
     } catch {
       // ignore — we're logging out regardless
     }
     setToken(null);
+    storeSetRefreshToken(null);
     setUser(null);
   }, [setToken]);
 
@@ -216,6 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     token,
     isLoading,
+    isBootstrapping,
     isAuthenticated: !!token && !!user,
     login,
     register,
@@ -223,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resendOTP,
     googleLogin,
     logout,
-  }), [user, token, isLoading, login, register, verifyOTP, resendOTP, googleLogin, logout]);
+  }), [user, token, isLoading, isBootstrapping, login, register, verifyOTP, resendOTP, googleLogin, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

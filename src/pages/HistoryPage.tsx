@@ -24,7 +24,6 @@ import {
   deleteAllSessions,
   handleApiError,
   type SessionDetail,
-  type ChatSession,
   type SessionListResponse,
 } from '../api/client';
 import { Card } from '@/components/ui/card';
@@ -120,7 +119,7 @@ const HistoryPage = () => {
     },
   });
 
-  const handleSessionClick = async (session: ChatSession) => {
+  const handleSessionClick = async (session: { id: string }) => {
     try {
       const sessionDetail = await getSession(session.id);
       setSelectedSession(sessionDetail);
@@ -278,11 +277,11 @@ const HistoryPage = () => {
                       </div>
                     )}
 
-                    {!msg.response.is_valid && msg.response.validation_errors.length > 0 && (
+                    {!msg.response.is_valid && (msg.response.validation_errors?.length ?? 0) > 0 && (
                       <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
                         <p className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-rose-300"><AlertTriangle className="h-3.5 w-3.5" /> Validation Errors</p>
                         <ul className="space-y-1">
-                          {msg.response.validation_errors.map((error, idx) => (
+                          {(msg.response.validation_errors ?? []).map((error, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-sm text-rose-300/90"><span className="text-rose-500">•</span>{error}</li>
                           ))}
                         </ul>
