@@ -1,44 +1,16 @@
 /**
  * Query-related TypeScript interfaces.
  *
- * Types for QueryRequest (user message payload), QueryResponse (SQL + result),
- * and the streaming event shape.
+ * QueryRequest (user message payload) and QueryResponse (SQL + result) are
+ * derived from the generated OpenAPI schema so they can never drift from the
+ * backend contract. ChatMessage / StreamEvent build on them.
  */
+import type { components } from '../api/schema';
 
-export interface QueryRequest {
-  question: string;
-  dialect?: string;
-  execute?: boolean;
-  session_id?: string;
-}
+type Schemas = components['schemas'];
 
-export interface QueryResponse {
-  question: string;
-  sql: string;
-  dialect: string;
-  is_valid: boolean;
-  validation_errors: string[];
-  retrieved_tables: string[];
-  used_tables: string[];
-  execution_result: Record<string, unknown>[] | null;
-  execution_error?: string;
-  tokens_used: number;
-  cached: boolean;
-  message?: string;
-  intent_type?: string | null;
-  query_complexity?: number;
-  prompt_version?: string;
-  retrieval_method?: string;
-  // API can return null for timing fields; match api/client.ts's QueryResponse
-  // so session messages (SessionDetail) are assignable to ChatMessage[].
-  response_time_ms?: number | null;
-  suggested_chart?: {
-    type: string;
-    x_axis: string;
-    y_axis: string;
-  } | null;
-  follow_up_questions?: string[];
-}
+export type QueryRequest = Schemas['QueryRequest'];
+export type QueryResponse = Schemas['QueryResponse'];
 
 export interface ChatMessage {
   id: number;

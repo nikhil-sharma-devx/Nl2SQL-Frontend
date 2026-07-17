@@ -359,7 +359,7 @@ export function useChat(): UseChatReturn {
 
     try {
       const execResult = await executeSQL({ sql });
-      const suggestedChart = guessChartConfig(execResult.results);
+      const suggestedChart = guessChartConfig(execResult.results ?? null);
 
       const addMsgReq: AddMessageRequest = {
         question: `Visual Query: ${nlPrompt}`,
@@ -370,7 +370,9 @@ export function useChat(): UseChatReturn {
         execution_result: execResult.results,
         execution_error: execResult.error,
         intent_type: 'direct_sql',
-        suggested_chart: suggestedChart,
+        tokens_used: 0,
+        cached: false,
+        suggested_chart: suggestedChart as AddMessageRequest['suggested_chart'],
       };
 
       const savedMsg = await addSessionMessage(sessionId, addMsgReq);

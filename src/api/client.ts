@@ -1,6 +1,16 @@
-import axios, { AxiosError } from 'axios';
-import { getToken } from '../auth/tokenStore';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import {
+  clearTokens,
+  getRefreshToken,
+  getToken,
+  setRefreshToken,
+  setToken,
+} from '../auth/tokenStore';
 import { toast } from '../components/ui/toast';
+import type { components } from './schema';
+
+/** Generated OpenAPI schema types — single source of truth for the API contract. */
+type Schemas = components['schemas'];
 
 /**
  * Typed error raised for every failed API call.
@@ -29,37 +39,9 @@ export class ApiError extends Error {
 }
 
 // Query types
-export interface QueryRequest {
-  question: string;
-  dialect?: string;
-  execute?: boolean;
-  session_id?: string;
-}
+export type QueryRequest = Schemas['QueryRequest'];
 
-export interface QueryResponse {
-  question: string;
-  sql: string;
-  dialect: string;
-  is_valid: boolean;
-  validation_errors: string[];
-  retrieved_tables: string[];
-  used_tables: string[];
-  execution_result: Record<string, unknown>[] | null;
-  execution_error?: string;
-  tokens_used: number;
-  cached: boolean;
-  message?: string;
-  suggested_chart?: {
-    type: string;
-    x_axis: string;
-    y_axis: string;
-  } | null;
-  follow_up_questions?: string[];
-  intent_type?: string | null;
-  response_time_ms?: number | null;
-  /** Per-stage latency in ms: retrieval, table_selection, generation, validation, execution. */
-  stage_timings?: Record<string, number> | null;
-}
+export type QueryResponse = Schemas['QueryResponse'];
 
 /**
  * Pipeline stages streamed over SSE. Mirrors the backend `PipelineStage`
@@ -87,87 +69,31 @@ export interface PipelineStageEvent {
   type?: string;
 }
 
-export interface ExplainResponse {
-  sql: string;
-  explanation: string;
-}
+export type ExplainResponse = Schemas['ExplainResponse'];
 
-export interface SuggestionRequest {
-  original_question: string;
-  generated_sql: string;
-  retrieved_tables: string[];
-}
+export type SuggestionRequest = Schemas['SuggestionRequest'];
 
-export interface SuggestionResponse {
-  suggestions: string[];
-}
+export type SuggestionResponse = Schemas['SuggestionResponse'];
 
-export interface ExecuteRequest {
-  sql: string;
-  dialect?: string;
-}
+export type ExecuteRequest = Schemas['ExecuteRequest'];
 
-export interface ExecuteResponse {
-  sql: string;
-  success: boolean;
-  results: Record<string, unknown>[] | null;
-  error: string | null;
-  row_count: number;
-}
+export type ExecuteResponse = Schemas['ExecuteResponse'];
 
 // Schema types
-export interface IngestResponse {
-  message: string;
-  chunks_ingested: number;
-}
+export type IngestResponse = Schemas['IngestResponse'];
 
-export interface SchemaStatusResponse {
-  chunks_stored: number;
-  vector_store_ready: boolean;
-}
+export type SchemaStatusResponse = Schemas['SchemaStatusResponse'];
 
-export interface SchemaRefreshResponse {
-  message: string;
-  tables_found: number;
-  chunks_ingested: number;
-}
+export type SchemaRefreshResponse = Schemas['SchemaRefreshResponse'];
 
 // Schema catalog (per-user Schema page read model)
-export interface CatalogColumn {
-  name: string;
-  data_type: string;
-  nullable: boolean;
-  primary_key: boolean;
-  foreign_key: string | null;
-  description: string | null;
-}
+export type CatalogColumn = Schemas['CatalogColumn'];
 
-export interface CatalogTable {
-  id: number;
-  schema_name: string;
-  table_name: string;
-  source: 'reflected' | 'uploaded';
-  columns: CatalogColumn[];
-  description: string | null;
-  pinned: boolean;
-  is_new: boolean;
-  last_seen_at: string | null;
-}
+export type CatalogTable = Schemas['CatalogTable'];
 
-export interface SchemaTablesResponse {
-  database_name: string | null;
-  dialect: string;
-  source: 'reflected' | 'uploaded' | 'merged';
-  last_synced_at: string | null;
-  tables: CatalogTable[];
-}
+export type SchemaTablesResponse = Schemas['SchemaTablesResponse'];
 
-export interface SchemaSyncResponse {
-  message: string;
-  changed: boolean;
-  new_tables: string[];
-  total_tables: number;
-}
+export type SchemaSyncResponse = Schemas['SyncResponse'];
 
 // Config types
 export interface LLMConfig {
@@ -205,6 +131,22 @@ export interface UpdateDatabaseResponse {
   message: string;
 }
 
+// Phase 3 RAG quality configuration (runtime-adjustable feature flags)
+export interface RagConfig {
+  schema_descriptions_enabled: boolean;
+  multi_query_enabled: boolean;
+  multi_query_max: number;
+  few_shot_retrieval_enabled: boolean;
+  few_shot_top_k: number;
+  parent_child_chunking_enabled: boolean;
+  hyde_enabled: boolean;
+  adaptive_top_k_enabled: boolean;
+  adaptive_top_k_min: number;
+  adaptive_top_k_max: number;
+}
+
+export type RagConfigUpdate = Partial<RagConfig>;
+
 // History types
 export interface HistoryEntry {
   id: number;
@@ -212,10 +154,7 @@ export interface HistoryEntry {
   query_response: QueryResponse;
 }
 
-export interface HistoryListResponse {
-  entries: HistoryEntry[];
-  total: number;
-}
+export type HistoryListResponse = Schemas['HistoryListResponse'];
 
 // Session types
 export interface ChatSession {
@@ -239,10 +178,7 @@ export interface SessionDetail {
   }[];
 }
 
-export interface SessionListResponse {
-  sessions: ChatSession[];
-  total: number;
-}
+export type SessionListResponse = Schemas['SessionListResponse'];
 
 // Create axios instance
 const apiClient = axios.create({
@@ -263,20 +199,60 @@ apiClient.interceptors.request.use((config) => {
 });
 
 /**
- * When the server rejects our token (401), the stored session is stale or
- * expired. Clear it and send the user back to the login screen so a fresh,
- * valid token can be minted — rather than surfacing a confusing error.
+ * When the server rejects our token (401) and it can't be refreshed, the stored
+ * session is stale or revoked. Clear it and send the user back to the login
+ * screen so a fresh, valid token can be minted — rather than surfacing a
+ * confusing error.
  */
 export const forceReauth = (): void => {
   try {
     localStorage.removeItem('nl2sql_user');
-    localStorage.removeItem('nl2sql_token');
+    clearTokens();
   } catch {
     // ignore storage errors
   }
   if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
     window.location.assign('/auth');
   }
+};
+
+/**
+ * Single-flight refresh: concurrent 401s share one in-flight refresh request so
+ * we mint exactly one new token pair. Resolves to the new access token, or null
+ * when refresh is impossible (no refresh token) or rejected (expired/revoked).
+ */
+let refreshPromise: Promise<string | null> | null = null;
+
+const performTokenRefresh = async (): Promise<string | null> => {
+  const refresh = getRefreshToken();
+  if (!refresh) return null;
+  try {
+    // Use a bare axios call (not apiClient) so this request bypasses the
+    // interceptors below and can never recurse into another refresh attempt.
+    const { data } = await axios.post(
+      `${apiClient.defaults.baseURL}/auth/refresh`,
+      { refresh_token: refresh },
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+    const accessToken: string = data.access_token;
+    setToken(accessToken);
+    setRefreshToken(data.refresh_token);
+    // Keep the shared axios default header (used by AuthContext's raw calls) fresh.
+    axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    return accessToken;
+  } catch {
+    return null;
+  }
+};
+
+const refreshAccessToken = (): Promise<string | null> => {
+  refreshPromise = refreshPromise ?? performTokenRefresh();
+  const p = refreshPromise;
+  // Reset the shared slot once this attempt settles so the next 401 can retry.
+  void p.finally(() => {
+    if (refreshPromise === p) refreshPromise = null;
+  });
+  return p;
 };
 
 /** Extract the human-readable message from a backend error payload. */
@@ -327,12 +303,35 @@ const notifyApiError = (err: ApiError): void => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (axios.isAxiosError(error)) {
-      if (error.response?.status === 401) {
+      const original = error.config as
+        | (InternalAxiosRequestConfig & { _retry?: boolean })
+        | undefined;
+      const status = error.response?.status;
+
+      // On a 401, transparently refresh the access token once and retry the
+      // original request. Never retry the refresh call itself, and never loop.
+      const isAuthEndpoint =
+        original?.url?.includes('/auth/refresh') ||
+        original?.url?.includes('/auth/login');
+      if (status === 401 && original && !original._retry && !isAuthEndpoint) {
+        original._retry = true;
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          original.headers = original.headers ?? {};
+          original.headers['Authorization'] = `Bearer ${newToken}`;
+          return apiClient(original);
+        }
         forceReauth();
         return Promise.reject(toApiError(error));
       }
+
+      if (status === 401) {
+        forceReauth();
+        return Promise.reject(toApiError(error));
+      }
+
       const apiError = toApiError(error);
       notifyApiError(apiError);
       return Promise.reject(apiError);
@@ -553,6 +552,16 @@ export const getAvailableModels = async (): Promise<ModelsMap> => {
   return response.data;
 };
 
+export const getRagConfig = async (): Promise<RagConfig> => {
+  const response = await apiClient.get<RagConfig>('/config/rag');
+  return response.data;
+};
+
+export const updateRagConfig = async (updates: RagConfigUpdate): Promise<RagConfig> => {
+  const response = await apiClient.put<RagConfig>('/config/rag', updates);
+  return response.data;
+};
+
 export const getHistory = async (limit = 50, offset = 0): Promise<HistoryListResponse> => {
   const response = await apiClient.get<HistoryListResponse>('/history', {
     params: { limit, offset },
@@ -590,27 +599,7 @@ export const deleteAllSessions = async (): Promise<void> => {
   await apiClient.delete('/sessions');
 };
 
-export interface AddMessageRequest {
-  question: string;
-  sql: string;
-  dialect: string;
-  is_valid: boolean;
-  validation_errors?: string[];
-  retrieved_tables?: string[];
-  used_tables?: string[];
-  execution_result?: Record<string, unknown>[] | null;
-  execution_error?: string | null;
-  tokens_used?: number;
-  cached?: boolean;
-  message?: string | null;
-  intent_type?: string | null;
-  suggested_chart?: {
-    type: string;
-    x_axis: string;
-    y_axis: string;
-  } | null;
-  follow_up_questions?: string[];
-}
+export type AddMessageRequest = Schemas['AddMessageRequest'];
 
 export const addSessionMessage = async (sessionId: string, req: AddMessageRequest): Promise<any> => {
   const response = await apiClient.post(`/sessions/${sessionId}/messages`, req);
@@ -627,18 +616,9 @@ export const checkHealth = async (): Promise<boolean> => {
 };
 
 // SQL Version Management functions
-export interface SaveVersionRequest {
-  message_id: number;
-  sql: string;
-  results?: Record<string, any>[];
-  success: boolean;
-}
+export type SaveVersionRequest = Schemas['SaveVersionRequest'];
 
-export interface SaveVersionResponse {
-  success: boolean;
-  version_number: number;
-  total_versions: number;
-}
+export type SaveVersionResponse = Schemas['SaveVersionResponse'];
 
 export interface SQLVersion {
   version: number;
@@ -699,25 +679,11 @@ export const analyticsAPI = {
   },
 };
 
-export interface LatencyBreakdown {
-  samples: number;
-  avg_stage_ms: Record<string, number>;
-}
+export type LatencyBreakdown = Schemas['LatencyBreakdown'];
 
-export interface CacheStats {
-  exact_hits: number;
-  semantic_hits: number;
-  misses: number;
-  total_lookups: number;
-  exact_hit_rate: number;
-  semantic_hit_rate: number;
-  overall_hit_rate: number;
-}
+export type CacheStats = Schemas['CacheStats'];
 
-export interface DeepHealthResponse {
-  status: 'ok' | 'degraded';
-  checks: Record<string, { ok: boolean; latency_ms: number; error?: string | null }>;
-}
+export type DeepHealthResponse = Schemas['DeepHealthResponse'];
 
 export const getDeepHealth = async (): Promise<DeepHealthResponse> => {
   const response = await apiClient.get<DeepHealthResponse>('/health/deep');
@@ -726,20 +692,9 @@ export const getDeepHealth = async (): Promise<DeepHealthResponse> => {
 
 // ── Profile / BYOK API ────────────────────────────────────────────────────────
 
-export interface APIKeyStatusItem {
-  provider: string;
-  label: string;
-  has_user_key: boolean;
-  has_server_key: boolean;
-  key_preview: string | null;
-  available_models: string[];
-}
+export type APIKeyStatusItem = Schemas['APIKeyStatusItem'];
 
-export interface APIKeyStatusResponse {
-  keys: APIKeyStatusItem[];
-  active_provider: string;
-  active_model: string;
-}
+export type APIKeyStatusResponse = Schemas['APIKeyStatusResponse'];
 
 export const getAPIKeyStatus = async (): Promise<APIKeyStatusResponse> => {
   const response = await apiClient.get<APIKeyStatusResponse>('/profile/api-keys');
@@ -981,24 +936,9 @@ export const clearAllHistory = async (confirm: string) => {
 
 // ── Phase 2: Query Templates ──────────────────────────────────────────────────
 
-export interface TemplateParameter {
-  name: string;
-  type?: string;
-  description?: string;
-  default?: string;
-}
+export type TemplateParameter = Schemas['TemplateParameter'];
 
-export interface QueryTemplate {
-  id: number;
-  name: string;
-  description?: string;
-  template_nl: string;
-  template_sql: string;
-  parameters: TemplateParameter[];
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
+export type QueryTemplate = Schemas['QueryTemplateOut'];
 
 export const getTemplates = async (params?: { search?: string; limit?: number; offset?: number }) => {
   const r = await apiClient.get('/query-templates', { params });
@@ -1036,13 +976,7 @@ export const renderTemplate = async (id: number, values: Record<string, string>)
 
 // ── Phase 2: Favorited Tables ─────────────────────────────────────────────────
 
-export interface FavoritedTable {
-  id: number;
-  table_name: string;
-  schema_name?: string;
-  note?: string;
-  created_at: string;
-}
+export type FavoritedTable = Schemas['FavoritedTableOut'];
 
 export const getFavoritedTables = async () => {
   const r = await apiClient.get('/favorited-tables');
@@ -1065,13 +999,7 @@ export const unpinTable = async (id: number) => {
 
 // ── Phase 2: Glossary ─────────────────────────────────────────────────────────
 
-export interface GlossaryEntry {
-  id: number;
-  term: string;
-  definition: string;
-  created_at: string;
-  updated_at: string;
-}
+export type GlossaryEntry = Schemas['GlossaryEntryOut'];
 
 export const getGlossary = async (search?: string) => {
   const r = await apiClient.get('/glossary', { params: { search, limit: 50 } });
@@ -1094,11 +1022,7 @@ export const deleteGlossaryEntry = async (id: number) => {
 
 // ── Phase 2: Notifications ────────────────────────────────────────────────────
 
-export interface NotificationPrefs {
-  email_digest: boolean;
-  in_app_enabled: boolean;
-  marketing_enabled: boolean;
-}
+export type NotificationPrefs = Schemas['NotificationPrefsOut'];
 
 export const getNotificationPrefs = async () => {
   const r = await apiClient.get('/notifications/preferences');
@@ -1119,12 +1043,7 @@ export const changePassword = async (current_password: string, new_password: str
 
 // ── Phase 2: Tutorial & Onboarding ───────────────────────────────────────────
 
-export interface TutorialProgress {
-  completed_steps: string[];
-  available_steps: string[];
-  dismissed_at?: string;
-  is_complete: boolean;
-}
+export type TutorialProgress = Schemas['TutorialProgressOut'];
 
 export const getTutorialProgress = async () => {
   const r = await apiClient.get('/tutorial');
@@ -1136,11 +1055,7 @@ export const patchTutorialProgress = async (d: { completed_steps?: string[]; dis
   return r.data as TutorialProgress;
 };
 
-export interface OnboardingState {
-  completed_items: string[];
-  available_items: string[];
-  progress_pct: number;
-}
+export type OnboardingState = Schemas['OnboardingOut'];
 
 export const getOnboarding = async () => {
   const r = await apiClient.get('/onboarding');

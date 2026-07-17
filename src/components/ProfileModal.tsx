@@ -183,7 +183,7 @@ function ProviderCard({
 
       {/* Models hint */}
       <div className="flex flex-wrap gap-1.5">
-        {item.available_models.map((m) => (
+        {(item.available_models ?? []).map((m) => (
           <span key={m} className="rounded-md bg-foreground/[0.05] px-2 py-0.5 font-mono text-[10px] text-muted-foreground/70">
             {m}
           </span>

@@ -28,11 +28,15 @@ import { useQuery } from '@tanstack/react-query';
 import ModelSwitcher from './ModelSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
 import ProfileModal from './ProfileModal';
-import SettingsModal from './SettingsModal';
 import UsageModal from './UsageModal';
+import SettingsModal from './SettingsModal';
 import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
-import { getSessions, checkHealth } from '../api/client';
+import { getSessions, checkHealth, getNotificationPrefs, type SessionListResponse } from '../api/client';
+import { setInAppNotificationsEnabled } from './ui/toast';
+
+/** A single session row as returned by the sessions list endpoint. */
+type SessionSummary = SessionListResponse['sessions'][number];
 import { useAuth } from '../context/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -53,17 +57,16 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/analytics': { title: 'Analytics', subtitle: 'Usage, accuracy & performance' },
   '/saved': { title: 'Saved Queries', subtitle: 'Your bookmarked SQL queries' },
   '/templates': { title: 'Query Templates', subtitle: 'Parameterized SQL patterns' },
-  '/settings': { title: 'Settings', subtitle: 'Preferences, privacy & security' },
   '/training': { title: 'Model Training', subtitle: 'Fine-tune on your query history' },
   '/help': { title: 'Help', subtitle: 'Documentation, shortcuts & FAQ' },
 };
 
 interface SessionGroup {
   label: string;
-  sessions: { id: string; title: string; updated_at: string; created_at: string }[];
+  sessions: SessionSummary[];
 }
 
-function groupByDate(sessions: { id: string; title: string; updated_at: string; created_at: string }[]): SessionGroup[] {
+function groupByDate(sessions: SessionSummary[]): SessionGroup[] {
   const now = new Date();
   const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const yesterdayMs = todayMs - 86_400_000;
@@ -120,8 +123,8 @@ const Layout = () => {
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -159,6 +162,16 @@ const Layout = () => {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Deep-link support: /settings redirects home with state so the popup opens
+  // (settings is a modal now, not a page). Clear the flag so Back doesn't reopen.
+  useEffect(() => {
+    const st = location.state as { openSettings?: boolean } | null;
+    if (st?.openSettings) {
+      setSettingsOpen(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   // Global "Alt+N" → new chat (documented in Help). Ignored while typing.
   useEffect(() => {
@@ -213,12 +226,26 @@ const Layout = () => {
     staleTime: 20_000,
   });
 
+  // Keep the toast layer in sync with the user's In-App Notifications preference.
+  // Shares the ['notification-prefs'] cache key with the Settings panel, so
+  // toggling it there updates this immediately.
+  const { data: notifPrefs } = useQuery({
+    queryKey: ['notification-prefs'],
+    queryFn: getNotificationPrefs,
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    setInAppNotificationsEnabled(notifPrefs?.in_app_enabled ?? true);
+  }, [notifPrefs?.in_app_enabled]);
+
   const allSessions = sessionsData?.sessions ?? [];
 
   const filteredSessions = useMemo(
     () =>
       chatSearch.trim()
-        ? allSessions.filter((s) => s.title.toLowerCase().includes(chatSearch.toLowerCase()))
+        ? allSessions.filter((s) => (s.title ?? '').toLowerCase().includes(chatSearch.toLowerCase()))
         : allSessions,
     [allSessions, chatSearch],
   );
@@ -438,7 +465,7 @@ const Layout = () => {
                             className="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
                           >
                             <MessagesSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/35 transition-colors group-hover:text-muted-foreground/60" />
-                            <span className="truncate leading-snug">{session.title}</span>
+                            <span className="truncate leading-snug">{session.title ?? 'New Chat'}</span>
                           </button>
                         ))}
                       </div>
@@ -561,8 +588,8 @@ const Layout = () => {
       </aside>
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <UsageModal open={usageOpen} onClose={() => setUsageOpen(false)} />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ShortcutOverlay />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}

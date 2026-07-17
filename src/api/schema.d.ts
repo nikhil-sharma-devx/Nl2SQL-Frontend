@@ -101,6 +101,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange a refresh token for a new access token
+         * @description Validate a refresh token, rotate it, and issue a new access token.
+         *
+         *     Rotation: the presented token is revoked and a brand-new refresh token is
+         *     returned. If the token is unknown, already revoked, or expired — or its
+         *     login session has been revoked — the request is rejected with 401.
+         */
+        post: operations["refresh_api_v1_auth_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/verify-otp": {
         parameters: {
             query?: never;
@@ -3008,6 +3032,17 @@ export interface components {
             };
         };
         /**
+         * RefreshRequest
+         * @description Request body for exchanging a refresh token for a new access token.
+         */
+        RefreshRequest: {
+            /**
+             * Refresh Token
+             * @description The opaque refresh token issued at login
+             */
+            refresh_token: string;
+        };
+        /**
          * ResetPasswordRequest
          * @description Request body for resetting password with OTP.
          */
@@ -3481,9 +3516,14 @@ export interface components {
         TokenResponse: {
             /**
              * Access Token
-             * @description JWT bearer token
+             * @description Short-lived JWT bearer token
              */
             access_token: string;
+            /**
+             * Refresh Token
+             * @description Long-lived opaque refresh token (rotated on use)
+             */
+            refresh_token: string;
             /**
              * Token Type
              * @default bearer
@@ -3743,6 +3783,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserPublic"];
+                };
+            };
+        };
+    };
+    refresh_api_v1_auth_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

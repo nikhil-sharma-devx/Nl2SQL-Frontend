@@ -118,7 +118,7 @@ export default function SavedQueriesPage() {
       setRunResults(prev => ({
         ...prev,
         [q.id]: toQueryResponse(
-          { sql: q.generated_sql, success: false, results: null, error: 'Execution failed. Check your schema connection.', row_count: 0 },
+          { sql: q.generated_sql, success: false, results: null, error: 'Execution failed. Check your schema connection.', row_count: 0, truncated: false },
           q.generated_sql,
           q.dialect ?? '',
         ),
