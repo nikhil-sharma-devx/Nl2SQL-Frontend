@@ -131,6 +131,22 @@ export interface UpdateDatabaseResponse {
   message: string;
 }
 
+// Phase 3 RAG quality configuration (runtime-adjustable feature flags)
+export interface RagConfig {
+  schema_descriptions_enabled: boolean;
+  multi_query_enabled: boolean;
+  multi_query_max: number;
+  few_shot_retrieval_enabled: boolean;
+  few_shot_top_k: number;
+  parent_child_chunking_enabled: boolean;
+  hyde_enabled: boolean;
+  adaptive_top_k_enabled: boolean;
+  adaptive_top_k_min: number;
+  adaptive_top_k_max: number;
+}
+
+export type RagConfigUpdate = Partial<RagConfig>;
+
 // History types
 export interface HistoryEntry {
   id: number;
@@ -533,6 +549,16 @@ export const updateLLMConfig = async (req: UpdateLLMRequest): Promise<UpdateLLMR
 
 export const getAvailableModels = async (): Promise<ModelsMap> => {
   const response = await apiClient.get<ModelsMap>('/config/models');
+  return response.data;
+};
+
+export const getRagConfig = async (): Promise<RagConfig> => {
+  const response = await apiClient.get<RagConfig>('/config/rag');
+  return response.data;
+};
+
+export const updateRagConfig = async (updates: RagConfigUpdate): Promise<RagConfig> => {
+  const response = await apiClient.put<RagConfig>('/config/rag', updates);
   return response.data;
 };
 

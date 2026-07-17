@@ -14,7 +14,6 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const SavedQueriesPage = lazy(() => import('./pages/SavedQueriesPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
@@ -66,7 +65,8 @@ function AppRoutes() {
           <Route path="saved" element={<SavedQueriesPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="training" element={<TrainingPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          {/* Settings is a modal now; keep the path as a deep-link that opens it. */}
+          <Route path="settings" element={<Navigate to="/" replace state={{ openSettings: true }} />} />
           <Route path="help" element={<HelpPage />} />
         </Route>
         {/* Catch-all → home */}

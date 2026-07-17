@@ -32,15 +32,27 @@ let nextId = 1;
 let toasts: ToastItem[] = [];
 const listeners = new Set<Listener>();
 
+// In-app notification preference (Settings → Notifications → "In-App Notifications").
+// When disabled, informational/success toasts are suppressed; errors always show so
+// failures are never silently hidden. Synced from the server pref by <Layout>.
+let inAppEnabled = true;
+export function setInAppNotificationsEnabled(enabled: boolean): void {
+  inAppEnabled = enabled;
+}
+
 const notify = () => listeners.forEach((l) => l(toasts));
 
 export function toast(opts: ToastOptions): void {
+  const variant: ToastVariant = opts.variant ?? 'info';
+  // Respect the user's in-app-notifications preference for non-critical toasts.
+  if (!inAppEnabled && variant !== 'error') return;
+
   const item: ToastItem = {
     id: nextId++,
     title: opts.title,
     description: opts.description,
-    variant: opts.variant ?? 'info',
-    durationMs: opts.durationMs ?? (opts.variant === 'error' ? 8000 : 5000),
+    variant,
+    durationMs: opts.durationMs ?? (variant === 'error' ? 8000 : 5000),
   };
   // De-duplicate identical back-to-back toasts (e.g. repeated failed polls)
   const last = toasts[toasts.length - 1];

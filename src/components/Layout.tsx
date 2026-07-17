@@ -28,11 +28,12 @@ import { useQuery } from '@tanstack/react-query';
 import ModelSwitcher from './ModelSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
 import ProfileModal from './ProfileModal';
-import SettingsModal from './SettingsModal';
 import UsageModal from './UsageModal';
+import SettingsModal from './SettingsModal';
 import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
-import { getSessions, checkHealth, type SessionListResponse } from '../api/client';
+import { getSessions, checkHealth, getNotificationPrefs, type SessionListResponse } from '../api/client';
+import { setInAppNotificationsEnabled } from './ui/toast';
 
 /** A single session row as returned by the sessions list endpoint. */
 type SessionSummary = SessionListResponse['sessions'][number];
@@ -56,7 +57,6 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/analytics': { title: 'Analytics', subtitle: 'Usage, accuracy & performance' },
   '/saved': { title: 'Saved Queries', subtitle: 'Your bookmarked SQL queries' },
   '/templates': { title: 'Query Templates', subtitle: 'Parameterized SQL patterns' },
-  '/settings': { title: 'Settings', subtitle: 'Preferences, privacy & security' },
   '/training': { title: 'Model Training', subtitle: 'Fine-tune on your query history' },
   '/help': { title: 'Help', subtitle: 'Documentation, shortcuts & FAQ' },
 };
@@ -123,8 +123,8 @@ const Layout = () => {
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -162,6 +162,16 @@ const Layout = () => {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Deep-link support: /settings redirects home with state so the popup opens
+  // (settings is a modal now, not a page). Clear the flag so Back doesn't reopen.
+  useEffect(() => {
+    const st = location.state as { openSettings?: boolean } | null;
+    if (st?.openSettings) {
+      setSettingsOpen(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   // Global "Alt+N" → new chat (documented in Help). Ignored while typing.
   useEffect(() => {
@@ -215,6 +225,20 @@ const Layout = () => {
     retry: false,
     staleTime: 20_000,
   });
+
+  // Keep the toast layer in sync with the user's In-App Notifications preference.
+  // Shares the ['notification-prefs'] cache key with the Settings panel, so
+  // toggling it there updates this immediately.
+  const { data: notifPrefs } = useQuery({
+    queryKey: ['notification-prefs'],
+    queryFn: getNotificationPrefs,
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    setInAppNotificationsEnabled(notifPrefs?.in_app_enabled ?? true);
+  }, [notifPrefs?.in_app_enabled]);
 
   const allSessions = sessionsData?.sessions ?? [];
 
@@ -564,8 +588,8 @@ const Layout = () => {
       </aside>
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <UsageModal open={usageOpen} onClose={() => setUsageOpen(false)} />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ShortcutOverlay />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
