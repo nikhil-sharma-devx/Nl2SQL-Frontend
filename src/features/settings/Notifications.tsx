@@ -83,7 +83,7 @@ export default function NotificationsSettings() {
         checked={prefs.email_digest}
         onChange={() => toggle('email_digest')}
         label="Email Digest"
-        description="Receive a periodic email summary of your query activity. Pairs with Scheduled Queries (coming soon)."
+        description="Receive a weekly email summarizing your query activity. Every email includes a one-click unsubscribe link."
       />
 
       <Toggle
