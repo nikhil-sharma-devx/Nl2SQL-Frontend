@@ -20,16 +20,23 @@ import {
   SlidersHorizontal,
   Bookmark,
   BookmarkCheck,
+  Pencil,
+  RefreshCw,
+  HelpCircle,
+  LayoutDashboard,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SqlPreview from './SqlPreview';
 import ResultTable from './ResultTable';
 import FeedbackPanel from './FeedbackPanel';
+import AddToDashboardModal from './AddToDashboardModal';
 // recharts is heavy — load it only when a message actually has a chart
 const DataChart = lazy(() => import('./DataChart'));
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { createSavedQuery } from '../api/client';
+import { createSavedQuery, type WidgetInput } from '../api/client';
+import { guessChartConfig } from '../utils/chart';
 import type { ChatMessage } from '../types/query.types';
 
 interface ChatWindowProps {
@@ -54,6 +61,9 @@ interface ChatWindowProps {
   onSqlExecuted?: (messageId: number, sql: string, results: any) => void;
   editedResults?: Record<number, any>;
   onFeedback?: (feedback: any) => void;
+  onCorrection?: (correctionText: string) => void | Promise<void>;
+  onEditQuestion?: (messageId: number, newText: string) => void | Promise<void>;
+  onRegenerate?: (messageId: number) => void | Promise<void>;
 }
 
 const ChatWindow = ({
@@ -73,19 +83,70 @@ const ChatWindow = ({
   onSqlExecuted,
   editedResults,
   onFeedback,
+  onCorrection,
+  onEditQuestion,
+  onRegenerate,
 }: ChatWindowProps) => {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+
+  const startEdit = (messageId: number, current: string) => {
+    setEditingId(messageId);
+    setEditText(current);
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+  const saveEdit = async (messageId: number) => {
+    const trimmed = editText.trim();
+    cancelEdit();
+    if (trimmed) await onEditQuestion?.(messageId, trimmed);
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col space-y-6 overflow-y-auto custom-scrollbar pr-1">
       {messages.map((msg) => (
         <div key={msg.id} className="animate-slide-up space-y-4">
           {/* User Question */}
-          <div className="flex justify-end">
+          <div className="group flex flex-col items-end">
             <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25)]">
-              <p className="text-sm leading-relaxed">{msg.question}</p>
-              <span className="mt-1.5 block font-mono text-[10px] text-foreground/50">
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              {editingId === msg.id ? (
+                <div className="flex w-full min-w-[240px] flex-col gap-2">
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    rows={2}
+                    autoFocus
+                    className="w-full resize-y rounded-md border border-primary/30 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEdit} className="h-7 px-2 text-xs">
+                      <X className="h-3.5 w-3.5" /> Cancel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => saveEdit(msg.id)} className="h-7 px-2 text-xs">
+                      <Check className="h-3.5 w-3.5" /> Send
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm leading-relaxed">{msg.question}</p>
+                  <span className="mt-1.5 block font-mono text-[10px] text-foreground/50">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </>
+              )}
             </div>
+            {editingId !== msg.id && onEditQuestion && (
+              <button
+                onClick={() => startEdit(msg.id, msg.question)}
+                title="Edit and resend this question"
+                className="mt-1 flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+              >
+                <Pencil className="h-3 w-3" /> Edit
+              </button>
+            )}
           </div>
 
           {/* AI Response or Direct SQL */}
@@ -111,8 +172,16 @@ const ChatWindow = ({
                   <span className="font-mono text-[10px] text-muted-foreground/60">(Visual Builder Execution)</span>
                 </div>
               )}
+              {/* Clarification request for an ambiguous follow-up — answer inline to continue */}
+              {msg.response.needs_clarification && (
+                <div className="mb-4 flex items-start gap-2 rounded-md border border-info-border bg-info-bg px-4 py-3 text-sm text-info-text">
+                  <HelpCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{msg.response.clarification_prompt || msg.response.message}</span>
+                </div>
+              )}
+
               {/* Assistant message: amber warning for empty results, plain text for greetings */}
-              {msg.response.message && (
+              {msg.response.message && !msg.response.needs_clarification && (
                 msg.response.execution_result !== null && msg.response.execution_result !== undefined ? (
                   <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
                     <span className="mt-0.5 shrink-0">⚠</span>
@@ -172,15 +241,30 @@ const ChatWindow = ({
                 </div>
               )}
 
-              {/* Data Chart */}
-              {msg.response.suggested_chart && msg.response.suggested_chart.type !== 'none' && (
-                <Suspense fallback={<div className="h-40 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
-                  <DataChart
-                    data={editedResults?.[msg.id]?.results || msg.response.execution_result || []}
-                    config={msg.response.suggested_chart as { type: string; x_axis: string; y_axis: string }}
-                  />
-                </Suspense>
-              )}
+              {/* Data Chart — prefer the model's suggestion, else infer one from
+                  the result rows so graphable answers still chart (manual Run,
+                  cached responses, or when the model returned no chart). */}
+              {(() => {
+                const chartRows = editedResults?.[msg.id]?.results || msg.response.execution_result || [];
+                if (!chartRows.length) return null;
+                const llmChart = msg.response.suggested_chart as
+                  | { type?: string; x_axis?: string; y_axis?: string }
+                  | null
+                  | undefined;
+                const chartCfg =
+                  llmChart && llmChart.type && llmChart.type !== 'none'
+                    ? llmChart
+                    : guessChartConfig(chartRows);
+                if (!chartCfg || !chartCfg.type || chartCfg.type === 'none') return null;
+                return (
+                  <Suspense fallback={<div className="h-40 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
+                    <DataChart
+                      data={chartRows}
+                      config={chartCfg as { type: string; x_axis: string; y_axis: string }}
+                    />
+                  </Suspense>
+                );
+              })()}
 
               {/* Execution Results */}
               <ResultTable response={msg.response} editedResult={editedResults?.[msg.id]} />
@@ -206,11 +290,32 @@ const ChatWindow = ({
                 </div>
               )}
 
-              {/* Feedback + Save */}
+              {/* Feedback + Save + Add to dashboard */}
               {msg.response.sql && msg.response.is_valid && (
                 <div className="flex items-center gap-2">
-                  <FeedbackPanel question={msg.question} generatedSql={msg.response.sql} onSubmit={onFeedback} />
+                  <FeedbackPanel question={msg.question} generatedSql={msg.response.sql} onSubmit={onFeedback} onCorrection={onCorrection} />
                   <SaveQueryButton question={msg.question} sql={msg.response.sql} />
+                  <AddToDashboardButton
+                    question={msg.question}
+                    sql={msg.response.sql}
+                    rows={editedResults?.[msg.id]?.results || msg.response.execution_result || []}
+                    suggestedChart={msg.response.suggested_chart}
+                  />
+                </div>
+              )}
+
+              {/* Regenerate / Retry — re-run the same question through the chat flow */}
+              {onRegenerate && msg.response.intent_type !== 'direct_sql' && !msg.response.needs_clarification && (
+                <div className="mt-3">
+                  <button
+                    onClick={() => onRegenerate(msg.id)}
+                    disabled={isLoading}
+                    title={msg.response.is_valid ? 'Regenerate this answer' : 'Retry this question'}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    {msg.response.is_valid ? 'Regenerate' : 'Retry'}
+                  </button>
                 </div>
               )}
             </div>
@@ -361,6 +466,48 @@ function SaveQueryButton({ question, sql }: { question: string; sql: string }) {
       {saved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
       {error ? 'Failed' : saved ? 'Saved' : 'Save'}
     </button>
+  );
+}
+
+function AddToDashboardButton({
+  question,
+  sql,
+  rows,
+  suggestedChart,
+}: {
+  question: string;
+  sql: string;
+  rows: any[];
+  suggestedChart?: { type?: string; x_axis?: string; y_axis?: string } | null;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Derive the widget's chart config: prefer the model's suggestion, else infer
+  // from the result rows, else fall back to a plain table widget.
+  const effective =
+    suggestedChart && suggestedChart.type && suggestedChart.type !== 'none'
+      ? suggestedChart
+      : guessChartConfig(rows);
+  const widget: WidgetInput = {
+    title: question.slice(0, 200),
+    nl_prompt: question,
+    sql,
+    chart_type: effective?.type ?? 'table',
+    chart_config: effective ? { x_axis: effective.x_axis, y_axis: effective.y_axis } : null,
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        title="Add this result to a dashboard"
+        className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+      >
+        <LayoutDashboard size={13} />
+        Dashboard
+      </button>
+      <AddToDashboardModal open={open} onOpenChange={setOpen} widget={widget} />
+    </>
   );
 }
 

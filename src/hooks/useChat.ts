@@ -56,10 +56,13 @@ interface UseChatReturn {
     lastExecute: boolean;
   } | null;
   sendMessage: (dialect: string, execute: boolean) => Promise<void>;
+  sendCorrection: (dialect: string, execute: boolean, correctionText: string) => Promise<void>;
   abortQuery: () => void;
   addDirectSqlMessage: (sql: string, nlPrompt: string) => Promise<void>;
   handleNewChat: () => Promise<void>;
   handleRetry: (dialect: string) => void;
+  editMessage: (messageId: number, newText: string, dialect: string, execute: boolean) => Promise<void>;
+  regenerateMessage: (messageId: number, dialect: string, execute: boolean) => Promise<void>;
   clearValidationError: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -233,9 +236,12 @@ export function useChat(): UseChatReturn {
     return currentSession.id;
   }, [currentSession]);
 
-  const sendMessage = useCallback(
-    async (dialect: string, execute: boolean) => {
-      const trimmed = question.trim();
+  // Shared submission path for both plain questions and corrections. A
+  // correction is sent through the same query flow with `is_correction: true`
+  // so the backend rewrites the previous turn and regenerates SQL.
+  const submitQuery = useCallback(
+    async (text: string, dialect: string, execute: boolean, isCorrection: boolean) => {
+      const trimmed = text.trim();
       if (!trimmed) return;
       if (trimmed.length < 3) {
         setValidationError('Question must be at least 3 characters long.');
@@ -267,9 +273,40 @@ export function useChat(): UseChatReturn {
         dialect,
         execute,
         session_id: sessionId || undefined,
+        ...(isCorrection ? { is_correction: true } : {}),
       });
     },
-    [question, getOrCreateSession, queryMutation],
+    [getOrCreateSession, queryMutation],
+  );
+
+  const sendMessage = useCallback(
+    (dialect: string, execute: boolean) => submitQuery(question, dialect, execute, false),
+    [question, submitQuery],
+  );
+
+  const sendCorrection = useCallback(
+    (dialect: string, execute: boolean, correctionText: string) =>
+      submitQuery(correctionText, dialect, execute, true),
+    [submitQuery],
+  );
+
+  // Re-run the same earlier question to get a fresh generation (Regenerate /
+  // Retry). Reuses the shared submit/stream flow — the new turn continues the
+  // conversation so multi-turn context is preserved.
+  const regenerateMessage = useCallback(
+    (messageId: number, dialect: string, execute: boolean) => {
+      const msg = currentSessionRef.current?.messages.find((m) => m.id === messageId);
+      if (!msg) return Promise.resolve();
+      return submitQuery(msg.question, dialect, execute, false);
+    },
+    [submitQuery],
+  );
+
+  // Re-submit an edited version of an earlier question (continues the thread).
+  const editMessage = useCallback(
+    (_messageId: number, newText: string, dialect: string, execute: boolean) =>
+      submitQuery(newText, dialect, execute, false),
+    [submitQuery],
   );
 
   const abortQuery = useCallback(() => {
@@ -406,10 +443,13 @@ export function useChat(): UseChatReturn {
     validationError,
     rateLimitError,
     sendMessage,
+    sendCorrection,
     abortQuery,
     addDirectSqlMessage,
     handleNewChat,
     handleRetry,
+    editMessage,
+    regenerateMessage,
     clearValidationError: () => setValidationError(null),
     messagesEndRef,
   };

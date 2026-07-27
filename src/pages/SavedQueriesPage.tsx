@@ -43,6 +43,7 @@ function toQueryResponse(exec: ExecuteResponse, sql: string, dialect: string): Q
     execution_error: exec.error ?? undefined,
     tokens_used: 0,
     cached: false,
+    needs_clarification: false,
   };
 }
 

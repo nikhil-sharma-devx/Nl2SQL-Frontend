@@ -3,15 +3,17 @@
  * (Logic unchanged; restyled with shadcn primitives.)
  */
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Check, X, Zap, Copy, Loader2, BookOpen, Send, Lightbulb } from 'lucide-react';
+import { Check, X, Zap, Copy, Loader2, BookOpen, Send, Lightbulb, Gauge, AlertTriangle, Info } from 'lucide-react';
 import type { QueryResponse } from '../types/query.types';
-import { explainSQL, getSuggestions, saveSQLVersion, executeSQL, getSQLVersions } from '../api/client';
+import { explainSQL, getSuggestions, saveSQLVersion, executeSQL, getSQLVersions, previewSQL } from '../api/client';
+import type { QueryPreviewResponse } from '../api/client';
 import type { SQLVersion } from './VersionedSQLDisplay';
 
 // react-syntax-highlighter is heavy — load it with the first SQL block
 const VersionedSQLDisplay = lazy(() => import('./VersionedSQLDisplay'));
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import ExportShareControls from './ExportShareControls';
 
 interface SqlPreviewProps {
   response: QueryResponse;
@@ -39,6 +41,8 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
   const [isRunning, setIsRunning] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [preview, setPreview] = useState<QueryPreviewResponse | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     if (!messageId) return;
@@ -131,6 +135,22 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
     }
   };
 
+  const handlePreview = async () => {
+    if (preview) {
+      setPreview(null);
+      return;
+    }
+    setLoadingPreview(true);
+    try {
+      const result = await previewSQL(response.sql);
+      setPreview(result);
+    } catch (error) {
+      console.error('Failed to preview SQL cost:', error);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleLoadSuggestions = async () => {
     if (suggestions.length > 0) return;
     setLoadingSuggestions(true);
@@ -191,6 +211,22 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
             <><Lightbulb className="h-4 w-4" /> Get Suggestions</>
           )}
         </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handlePreview}
+          disabled={loadingPreview}
+        >
+          {loadingPreview ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> Estimating…</>
+          ) : (
+            <><Gauge className="h-4 w-4" /> {preview ? 'Hide' : 'Preview'} Cost</>
+          )}
+        </Button>
+
+        {/* Export (CSV/JSON/SQL/PDF) + Share (secure link, email, Slack) */}
+        <ExportShareControls response={response} />
       </div>
 
       {/* Validation Status + Cache + Tokens */}
@@ -219,6 +255,48 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
           </div>
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{explanation}</p>
         </div>
+      )}
+
+      {/* Query Cost / Row-Count Preview */}
+      {preview && (
+        preview.supported ? (
+          <div className="mt-4 rounded-xl border border-info-border bg-info-bg p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-info-text" />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-info-text">Query Cost Preview</span>
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <Badge variant="info">
+                Est. rows: <span className="font-bold">{(preview.estimated_rows ?? 0).toLocaleString()}</span>
+              </Badge>
+              <Badge variant="violet">
+                Est. cost: <span className="font-bold">{(preview.estimated_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              </Badge>
+            </div>
+            {preview.warnings.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {preview.warnings.map((w, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 rounded-lg border border-warning-border bg-warning-bg p-2.5 text-sm text-warning-text"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{w.message}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="flex items-center gap-1.5 text-sm text-foreground/70">
+                <Check className="h-4 w-4 text-primary" /> No performance warnings detected.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-card/40 p-4 text-sm text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{preview.message || 'Query preview is not supported on this database.'}</span>
+          </div>
+        )
       )}
 
       {/* Suggested Follow-up Questions */}

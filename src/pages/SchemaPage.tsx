@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Upload,
@@ -9,10 +9,6 @@ import {
   Database,
   Trash2,
   RefreshCw,
-  Eye,
-  EyeOff,
-  Save,
-  Link2,
   Pin,
   PinOff,
   Plus,
@@ -21,12 +17,11 @@ import {
   ChevronRight,
   Sparkles,
   Table2,
+  Lightbulb,
 } from 'lucide-react';
 import {
   uploadSchema,
   handleApiError,
-  getDatabaseConfig,
-  updateDatabaseConfig,
   refreshSchema,
   getFavoritedTables,
   pinTable,
@@ -38,7 +33,6 @@ import {
   markTablesSeen,
   type FavoritedTable,
   type IngestResponse,
-  type DatabaseConfig,
   type SchemaRefreshResponse,
   type CatalogTable,
   type SchemaTablesResponse,
@@ -51,6 +45,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { SchemaExplanationDialog } from '../components/SchemaExplanationDialog';
+import ConnectionsManager from '../features/connections/ConnectionsManager';
 
 // ── Pinned Tables Section ─────────────────────────────────────────────────────
 
@@ -211,6 +207,7 @@ function SchemaTablesSection() {
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [editingDesc, setEditingDesc] = useState<Record<number, string>>({});
+  const [explain, setExplain] = useState<{ table: string; column?: string | null } | null>(null);
 
   const { data, isLoading, isFetching } = useQuery<SchemaTablesResponse>({
     queryKey: ['schema-tables'],
@@ -389,6 +386,13 @@ function SchemaTablesSection() {
                       </span>
                     </button>
                     <button
+                      onClick={() => setExplain({ table: t.table_name })}
+                      className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                      title="Explain this table"
+                    >
+                      <Lightbulb className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => togglePin(t)}
                       disabled={pinMutation.isPending || unpinMutation.isPending}
                       className={cn(
@@ -413,6 +417,7 @@ function SchemaTablesSection() {
                               <th className="px-2 py-1 font-semibold">Column</th>
                               <th className="px-2 py-1 font-semibold">Type</th>
                               <th className="px-2 py-1 font-semibold">Keys</th>
+                              <th className="px-2 py-1 font-semibold sr-only">Explain</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -426,6 +431,15 @@ function SchemaTablesSection() {
                                     {c.foreign_key && <Badge variant="info">FK → {c.foreign_key}</Badge>}
                                     {!c.nullable && <Badge variant="secondary">NOT NULL</Badge>}
                                   </span>
+                                </td>
+                                <td className="px-2 py-1 text-right">
+                                  <button
+                                    onClick={() => setExplain({ table: t.table_name, column: c.name })}
+                                    className="rounded p-1 text-muted-foreground transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                                    title={`Explain ${c.name}`}
+                                  >
+                                    <Lightbulb className="h-3.5 w-3.5" />
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -462,6 +476,15 @@ function SchemaTablesSection() {
           </div>
         )}
       </CardContent>
+
+      <SchemaExplanationDialog
+        table={explain?.table ?? null}
+        column={explain?.column ?? null}
+        open={!!explain}
+        onOpenChange={(o) => {
+          if (!o) setExplain(null);
+        }}
+      />
     </Card>
   );
 }
@@ -473,26 +496,9 @@ const SchemaPage = () => {
   const [resetExisting, setResetExisting] = useState(false);
   const [uploadResult, setUploadResult] = useState<IngestResponse | null>(null);
 
-  const [dbUrl, setDbUrl] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [dbSaveStatus, setDbSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [dbSaveMessage, setDbSaveMessage] = useState('');
-
   const [refreshResult, setRefreshResult] = useState<SchemaRefreshResponse | null>(null);
 
   const { schemaStatus: status, isLoading: statusLoading, refetch: refetchStatus } = useSchema();
-
-  const { data: dbConfig, isLoading: dbConfigLoading } = useQuery<DatabaseConfig>({
-    queryKey: ['databaseConfig'],
-    queryFn: getDatabaseConfig,
-    staleTime: 60_000,
-  });
-
-  useEffect(() => {
-    if (dbConfig?.database_url) {
-      setDbUrl(dbConfig.database_url);
-    }
-  }, [dbConfig]);
 
   const uploadMutation = useMutation({
     mutationFn: ({ file, reset }: { file: File; reset: boolean }) => uploadSchema(file, reset),
@@ -501,22 +507,6 @@ const SchemaPage = () => {
       setSelectedFile(null);
       queryClient.invalidateQueries({ queryKey: ['schemaStatus'] });
       queryClient.invalidateQueries({ queryKey: ['schema-tables'] });
-    },
-  });
-
-  const dbUpdateMutation = useMutation({
-    mutationFn: (url: string) => updateDatabaseConfig(url),
-    onSuccess: (data) => {
-      setDbSaveStatus('success');
-      setDbSaveMessage(data.message);
-      setDbUrl(data.database_url);
-      queryClient.invalidateQueries({ queryKey: ['databaseConfig'] });
-      setTimeout(() => setDbSaveStatus('idle'), 5000);
-    },
-    onError: (error) => {
-      setDbSaveStatus('error');
-      setDbSaveMessage(handleApiError(error));
-      setTimeout(() => setDbSaveStatus('idle'), 8000);
     },
   });
 
@@ -572,26 +562,6 @@ const SchemaPage = () => {
     uploadMutation.reset();
   };
 
-  const handleDbSave = () => {
-    if (!dbUrl.trim()) return;
-    setDbSaveStatus('idle');
-    dbUpdateMutation.mutate(dbUrl.trim());
-  };
-
-  const maskPassword = (url: string): string => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.password) {
-        return url.replace(parsed.password, '••••••••');
-      }
-      return url;
-    } catch {
-      return url;
-    }
-  };
-
-  const displayUrl = showPassword ? dbUrl : maskPassword(dbUrl);
-
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-6">
       {/* Page Header */}
@@ -602,82 +572,8 @@ const SchemaPage = () => {
         </p>
       </div>
 
-      {/* Database Connection */}
-      <Card id="db-connection-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2.5">
-            <Link2 className="h-5 w-5 text-violet-400" />
-            Database Connection
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {dbConfigLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Loading connection…
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2.5">
-                <Label htmlFor="db-url-input" className="normal-case">Connection String</Label>
-                <div className="relative">
-                  <Input
-                    id="db-url-input"
-                    type="text"
-                    value={displayUrl}
-                    onChange={(e) => {
-                      setDbUrl(e.target.value);
-                      setDbSaveStatus('idle');
-                    }}
-                    onFocus={() => setShowPassword(true)}
-                    placeholder="postgresql+asyncpg://user:password@host:5432/dbname"
-                    className="pr-11 font-mono text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 transition-colors hover:text-violet-400"
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground/80">
-                  Format: <code className="rounded border border-border bg-background/70 px-1.5 py-0.5 font-mono text-foreground/85">postgresql+asyncpg://user:pass@host:port/db</code>
-                </p>
-              </div>
-
-              <div className="mt-4 flex items-center gap-3">
-                <Button
-                  id="save-db-connection-btn"
-                  onClick={handleDbSave}
-                  disabled={!dbUrl.trim() || dbUpdateMutation.isPending}
-                  className="border border-violet-border bg-violet-bg text-violet-text shadow-none hover:bg-violet-text/20"
-                >
-                  {dbUpdateMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Validating & Saving…</>
-                  ) : (
-                    <><Save className="h-4 w-4" /> Save Connection</>
-                  )}
-                </Button>
-              </div>
-
-              {dbSaveStatus === 'success' && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 p-4">
-                  <Check className="h-5 w-5 text-primary" />
-                  <span className="font-medium text-primary">{dbSaveMessage}</span>
-                </div>
-              )}
-              {dbSaveStatus === 'error' && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
-                  <AlertCircle className="h-5 w-5 text-rose-400" />
-                  <span className="font-medium text-rose-300">{dbSaveMessage}</span>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* Database Connections (multiple per user) */}
+      <ConnectionsManager />
 
       {/* Sync Live Schema */}
       <Card id="sync-schema-card">

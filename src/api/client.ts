@@ -38,10 +38,19 @@ export class ApiError extends Error {
   }
 }
 
-// Query types
-export type QueryRequest = Schemas['QueryRequest'];
+// Query types.
+// `is_correction` lets the client force correction handling on a turn; it is
+// also auto-detected server-side. The intersection keeps this typed even before
+// `npm run gen:api` regenerates schema.d.ts with the new optional field.
+export type QueryRequest = Schemas['QueryRequest'] & { is_correction?: boolean };
 
-export type QueryResponse = Schemas['QueryResponse'];
+// `needs_clarification` / `clarification_prompt` are returned when an ambiguous
+// follow-up needs disambiguation. The intersection keeps this typed even before
+// `npm run gen:api` regenerates schema.d.ts with the new optional fields.
+export type QueryResponse = Schemas['QueryResponse'] & {
+  needs_clarification?: boolean;
+  clarification_prompt?: string | null;
+};
 
 /**
  * Pipeline stages streamed over SSE. Mirrors the backend `PipelineStage`
@@ -95,6 +104,9 @@ export type SchemaTablesResponse = Schemas['SchemaTablesResponse'];
 
 export type SchemaSyncResponse = Schemas['SyncResponse'];
 
+// RAG-powered explanation for a clicked table/column
+export type SchemaExplanation = Schemas['SchemaExplanation'];
+
 // Config types
 export interface LLMConfig {
   provider: string;
@@ -129,6 +141,30 @@ export interface UpdateDatabaseRequest {
 export interface UpdateDatabaseResponse {
   database_url: string;
   message: string;
+}
+
+// Multiple database connections per user (BYOD).
+// TODO: replace with Schemas['ConnectionOut'] after `npm run gen:api`.
+export interface Connection {
+  connection_id: string;
+  name: string;
+  db_type: string;
+  is_default: boolean;
+  has_dsn: boolean;
+  url_preview: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConnectionCreate {
+  name: string;
+  database_url: string;
+  db_type?: string;
+}
+
+export interface ConnectionUpdate {
+  name?: string;
+  database_url?: string;
 }
 
 // Phase 3 RAG quality configuration (runtime-adjustable feature flags)
@@ -464,6 +500,29 @@ export const executeSQL = async (req: ExecuteRequest): Promise<ExecuteResponse> 
   return response.data;
 };
 
+// Query cost / row-count preview.
+// Hand-typed until `npm run gen:api` regenerates schema.d.ts with the new
+// PreviewResponse; shapes mirror the backend `PreviewResponse` in query.py.
+export interface QueryPreviewWarning {
+  type: string;
+  message: string;
+}
+
+export interface QueryPreviewResponse {
+  sql: string;
+  supported: boolean;
+  estimated_rows: number | null;
+  estimated_cost: number | null;
+  plan: Record<string, any> | null;
+  warnings: QueryPreviewWarning[];
+  message: string | null;
+}
+
+export const previewSQL = async (sql: string): Promise<QueryPreviewResponse> => {
+  const response = await apiClient.post<QueryPreviewResponse>('/query/preview', { sql });
+  return response.data;
+};
+
 export const uploadSchema = async (file: File, reset: boolean): Promise<IngestResponse> => {
   const formData = new FormData();
   formData.append('file', file);
@@ -506,6 +565,17 @@ export const getSchemaTables = async (schemaName?: string): Promise<SchemaTables
   return response.data;
 };
 
+export const getSchemaExplanation = async (
+  table: string,
+  column?: string | null,
+): Promise<SchemaExplanation> => {
+  const response = await apiClient.get<SchemaExplanation>('/schema/explain', {
+    params: { table, ...(column ? { column } : {}) },
+    timeout: 60000, // LLM-backed generation can be slow on a cache miss
+  });
+  return response.data;
+};
+
 export const syncSchema = async (schemaName = 'public'): Promise<SchemaSyncResponse> => {
   const response = await apiClient.post<SchemaSyncResponse>('/schema/sync', null, {
     params: { schema_name: schemaName },
@@ -534,6 +604,43 @@ export const getDatabaseConfig = async (): Promise<DatabaseConfig> => {
 
 export const updateDatabaseConfig = async (database_url: string): Promise<UpdateDatabaseResponse> => {
   const response = await apiClient.put<UpdateDatabaseResponse>('/config/database', { database_url });
+  return response.data;
+};
+
+// ── Connections (multiple databases per user) ────────────────────────────────
+
+export const listConnections = async (): Promise<Connection[]> => {
+  const response = await apiClient.get<Connection[]>('/connections');
+  return response.data;
+};
+
+export const createConnection = async (body: ConnectionCreate): Promise<Connection> => {
+  const response = await apiClient.post<Connection>('/connections', body);
+  return response.data;
+};
+
+export const updateConnection = async (
+  id: string,
+  body: ConnectionUpdate,
+): Promise<Connection> => {
+  const response = await apiClient.put<Connection>(`/connections/${id}`, body);
+  return response.data;
+};
+
+export const deleteConnection = async (id: string): Promise<{ message: string }> => {
+  const response = await apiClient.delete<{ message: string }>(`/connections/${id}`);
+  return response.data;
+};
+
+export const testConnection = async (id: string): Promise<{ ok: boolean; message: string }> => {
+  const response = await apiClient.post<{ ok: boolean; message: string }>(
+    `/connections/${id}/test`,
+  );
+  return response.data;
+};
+
+export const selectConnection = async (id: string): Promise<Connection> => {
+  const response = await apiClient.post<Connection>(`/connections/${id}/select`);
   return response.data;
 };
 
@@ -1032,6 +1139,412 @@ export const getNotificationPrefs = async () => {
 export const updateNotificationPrefs = async (d: Partial<NotificationPrefs>) => {
   const r = await apiClient.patch('/notifications/preferences', d);
   return r.data as NotificationPrefs;
+};
+
+// ── Export & Share ────────────────────────────────────────────────────────────
+
+export type ExportFormat = 'csv' | 'json' | 'sql' | 'pdf';
+
+/** Export a query + its result set and trigger a browser download. */
+export const exportQuery = async (
+  format: ExportFormat,
+  sql: string,
+  question: string | null,
+  rows: Record<string, unknown>[],
+): Promise<void> => {
+  const response = await apiClient.post(
+    '/exports/query',
+    { sql, question, rows, format },
+    { responseType: 'blob' },
+  );
+  const url = URL.createObjectURL(response.data as Blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `query_export.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+export interface ShareCreateResponse {
+  id: string;
+  token: string;
+  url: string;
+  expires_at: string | null;
+}
+
+export const createShare = async (d: {
+  sql: string;
+  question?: string | null;
+  title?: string | null;
+  rows?: Record<string, unknown>[];
+  expires_in_days?: number | null;
+}): Promise<ShareCreateResponse> => {
+  const r = await apiClient.post('/shares', d);
+  return r.data as ShareCreateResponse;
+};
+
+export interface SharedSnapshot {
+  title: string | null;
+  question: string;
+  sql: string;
+  results: Record<string, unknown>[];
+  created_at: string;
+  expires_at: string | null;
+}
+
+/** Public: fetch a shared query snapshot by token (no auth required). */
+export const getSharedQuery = async (token: string): Promise<SharedSnapshot> => {
+  const r = await apiClient.get(`/shares/${token}`);
+  return r.data as SharedSnapshot;
+};
+
+export const revokeShare = async (id: string): Promise<void> => {
+  await apiClient.delete(`/shares/${id}`);
+};
+
+export interface ShareDeliveryResponse {
+  sent: boolean;
+  message: string;
+}
+
+export const emailShare = async (id: string, to_email: string): Promise<ShareDeliveryResponse> => {
+  const r = await apiClient.post(`/shares/${id}/email`, { to_email });
+  return r.data as ShareDeliveryResponse;
+};
+
+export const slackShare = async (id: string): Promise<ShareDeliveryResponse> => {
+  const r = await apiClient.post(`/shares/${id}/slack`);
+  return r.data as ShareDeliveryResponse;
+};
+
+// ── Auto Charting & Dashboards ────────────────────────────────────────────────
+
+export interface DashboardWidget {
+  id: string;
+  dashboard_id: string;
+  title: string;
+  nl_prompt: string | null;
+  sql: string;
+  chart_type: string;
+  chart_config: Record<string, unknown> | null;
+  layout: Record<string, unknown> | null;
+  position: number;
+  created_at: string;
+}
+
+export interface Dashboard {
+  id: string;
+  name: string;
+  is_builtin: boolean;
+  created_at: string;
+  updated_at: string;
+  widgets: DashboardWidget[];
+}
+
+export interface DashboardSummary {
+  id: string;
+  name: string;
+  is_builtin: boolean;
+  created_at: string;
+  updated_at: string;
+  widget_count: number;
+}
+
+export interface DashboardListResponse {
+  items: DashboardSummary[];
+  total: number;
+}
+
+export interface WidgetInput {
+  title?: string;
+  nl_prompt?: string | null;
+  sql?: string;
+  chart_type?: string;
+  chart_config?: Record<string, unknown> | null;
+  layout?: Record<string, unknown> | null;
+  position?: number;
+}
+
+export interface WidgetRefreshResult {
+  widget_id: string;
+  title: string;
+  chart_type: string;
+  chart_config: Record<string, unknown> | null;
+  rows: Record<string, unknown>[];
+  row_count: number;
+  error: string | null;
+}
+
+export interface DashboardRefreshResponse {
+  dashboard_id: string;
+  widgets: WidgetRefreshResult[];
+}
+
+export interface ChartRecommendationResponse {
+  chart_type: string;
+  x_axis: string | null;
+  y_axis: string | null;
+  reason: string;
+}
+
+export const getDashboards = async (params?: { limit?: number; offset?: number }): Promise<DashboardListResponse> => {
+  const r = await apiClient.get('/dashboards', { params });
+  return r.data as DashboardListResponse;
+};
+
+export const getDashboard = async (id: string): Promise<Dashboard> => {
+  const r = await apiClient.get(`/dashboards/${id}`);
+  return r.data as Dashboard;
+};
+
+export const createDashboard = async (d: { name: string; widgets?: WidgetInput[] }): Promise<Dashboard> => {
+  const r = await apiClient.post('/dashboards', d);
+  return r.data as Dashboard;
+};
+
+export const renameDashboard = async (id: string, name: string): Promise<Dashboard> => {
+  const r = await apiClient.patch(`/dashboards/${id}`, { name });
+  return r.data as Dashboard;
+};
+
+export const duplicateDashboard = async (id: string): Promise<Dashboard> => {
+  const r = await apiClient.post(`/dashboards/${id}/duplicate`);
+  return r.data as Dashboard;
+};
+
+export const deleteDashboard = async (id: string): Promise<void> => {
+  await apiClient.delete(`/dashboards/${id}`);
+};
+
+export const refreshDashboard = async (id: string): Promise<DashboardRefreshResponse> => {
+  const r = await apiClient.post(`/dashboards/${id}/refresh`, null, { timeout: 120000 });
+  return r.data as DashboardRefreshResponse;
+};
+
+export const addDashboardWidget = async (id: string, widget: WidgetInput): Promise<Dashboard> => {
+  const r = await apiClient.post(`/dashboards/${id}/widgets`, widget);
+  return r.data as Dashboard;
+};
+
+export const updateDashboardWidget = async (id: string, widgetId: string, updates: WidgetInput): Promise<Dashboard> => {
+  const r = await apiClient.patch(`/dashboards/${id}/widgets/${widgetId}`, updates);
+  return r.data as Dashboard;
+};
+
+export const deleteDashboardWidget = async (id: string, widgetId: string): Promise<Dashboard> => {
+  const r = await apiClient.delete(`/dashboards/${id}/widgets/${widgetId}`);
+  return r.data as Dashboard;
+};
+
+export const reorderDashboardWidgets = async (id: string, widgetIds: string[]): Promise<Dashboard> => {
+  const r = await apiClient.post(`/dashboards/${id}/widgets/reorder`, { widget_ids: widgetIds });
+  return r.data as Dashboard;
+};
+
+export const recommendChartApi = async (
+  columns: Record<string, unknown>[],
+  rows: Record<string, unknown>[],
+): Promise<ChartRecommendationResponse> => {
+  const r = await apiClient.post('/dashboards/recommend-chart', { columns, rows });
+  return r.data as ChartRecommendationResponse;
+};
+
+// ── Scheduled Queries & Alerts ────────────────────────────────────────────────
+
+export interface Schedule {
+  id: string;
+  connection_id: string;
+  name: string;
+  nl_prompt: string;
+  cron_expr: string;
+  raw_schedule_text: string | null;
+  timezone: string;
+  is_paused: boolean;
+  notify_email: boolean;
+  notify_in_app: boolean;
+  notify_condition: 'always' | 'on_results' | 'on_change';
+  is_builtin: boolean;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  last_status: string | null;
+  consecutive_failures: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduleListResponse {
+  items: Schedule[];
+}
+
+export interface ScheduleCreate {
+  connection_id: string;
+  name: string;
+  nl_prompt: string;
+  schedule_text: string;
+  timezone?: string;
+  notify_email?: boolean;
+  notify_condition?: 'always' | 'on_results' | 'on_change';
+}
+
+export interface ScheduleUpdate {
+  name?: string;
+  nl_prompt?: string;
+  schedule_text?: string;
+  timezone?: string;
+  notify_email?: boolean;
+  notify_condition?: 'always' | 'on_results' | 'on_change';
+}
+
+export interface ScheduleRun {
+  id: string;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  row_count: number | null;
+  generated_sql: string | null;
+  error: string | null;
+  notified: boolean;
+  duration_ms: number | null;
+}
+
+export interface ScheduleHistoryResponse {
+  items: ScheduleRun[];
+  total: number;
+}
+
+export const getSchedules = async (connectionId?: string): Promise<ScheduleListResponse> => {
+  const r = await apiClient.get('/schedules', { params: connectionId ? { connection_id: connectionId } : undefined });
+  return r.data as ScheduleListResponse;
+};
+
+export const createSchedule = async (body: ScheduleCreate): Promise<Schedule> => {
+  const r = await apiClient.post('/schedules', body);
+  return r.data as Schedule;
+};
+
+export const updateSchedule = async (id: string, body: ScheduleUpdate): Promise<Schedule> => {
+  const r = await apiClient.put(`/schedules/${id}`, body);
+  return r.data as Schedule;
+};
+
+export const deleteSchedule = async (id: string): Promise<void> => {
+  await apiClient.delete(`/schedules/${id}`);
+};
+
+export const pauseSchedule = async (id: string): Promise<Schedule> => {
+  const r = await apiClient.post(`/schedules/${id}/pause`);
+  return r.data as Schedule;
+};
+
+export const resumeSchedule = async (id: string): Promise<Schedule> => {
+  const r = await apiClient.post(`/schedules/${id}/resume`);
+  return r.data as Schedule;
+};
+
+export const runScheduleNow = async (id: string): Promise<ScheduleRun> => {
+  const r = await apiClient.post(`/schedules/${id}/run-now`, null, { timeout: 120000 });
+  return r.data as ScheduleRun;
+};
+
+export const getScheduleHistory = async (
+  id: string,
+  params?: { limit?: number; offset?: number },
+): Promise<ScheduleHistoryResponse> => {
+  const r = await apiClient.get(`/schedules/${id}/history`, { params });
+  return r.data as ScheduleHistoryResponse;
+};
+
+// ── Semantic Layer / Metrics Catalog ──────────────────────────────────────────
+
+export interface Metric {
+  metric_id: string;
+  connection_id: string;
+  name: string;
+  description: string | null;
+  sql_definition: string;
+  dimensions: string[];
+  tags: string[];
+  owner: string | null;
+  certified: boolean;
+  is_builtin: boolean;
+  validation_errors: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetricListResponse {
+  items: Metric[];
+  total: number;
+}
+
+export interface MetricCreate {
+  name: string;
+  description?: string | null;
+  sql_definition: string;
+  dimensions?: string[];
+  tags?: string[];
+  owner?: string | null;
+}
+
+export interface MetricUpdate {
+  name?: string;
+  description?: string | null;
+  sql_definition?: string;
+  dimensions?: string[];
+  tags?: string[];
+  owner?: string | null;
+}
+
+export interface MetricPreviewResponse {
+  ok: boolean;
+  row_count: number | null;
+  rows: Record<string, unknown>[] | null;
+  estimated_rows: number | null;
+  estimated_cost: number | null;
+  message: string | null;
+  error: string | null;
+}
+
+export const getMetrics = async (params?: {
+  search?: string;
+  tag?: string;
+  certified_only?: boolean;
+  limit?: number;
+  offset?: number;
+}): Promise<MetricListResponse> => {
+  const r = await apiClient.get('/metrics', { params });
+  return r.data as MetricListResponse;
+};
+
+export const createMetric = async (body: MetricCreate): Promise<Metric> => {
+  const r = await apiClient.post('/metrics', body);
+  return r.data as Metric;
+};
+
+export const updateMetric = async (id: string, body: MetricUpdate): Promise<Metric> => {
+  const r = await apiClient.put(`/metrics/${id}`, body);
+  return r.data as Metric;
+};
+
+export const deleteMetric = async (id: string): Promise<void> => {
+  await apiClient.delete(`/metrics/${id}`);
+};
+
+export const certifyMetric = async (id: string): Promise<Metric> => {
+  const r = await apiClient.post(`/metrics/${id}/certify`);
+  return r.data as Metric;
+};
+
+export const uncertifyMetric = async (id: string): Promise<Metric> => {
+  const r = await apiClient.post(`/metrics/${id}/uncertify`);
+  return r.data as Metric;
+};
+
+export const previewMetric = async (id: string, execute = false): Promise<MetricPreviewResponse> => {
+  const r = await apiClient.post(`/metrics/${id}/preview`, null, { params: { execute } });
+  return r.data as MetricPreviewResponse;
 };
 
 // ── Phase 2: Change Password ──────────────────────────────────────────────────

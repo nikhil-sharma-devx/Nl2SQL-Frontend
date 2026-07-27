@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { ItemActionsMenu } from '@/components/ItemActionsMenu';
 import { cn } from '@/lib/utils';
 
 // ── Template Form ─────────────────────────────────────────────────────────────
@@ -237,6 +239,9 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-sm text-foreground">{template.name}</p>
+            {template.is_builtin && (
+              <Badge variant="secondary" className="normal-case tracking-normal">Example</Badge>
+            )}
             {paramCount > 0 && (
               <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
                 {paramCount} param{paramCount !== 1 ? 's' : ''}
@@ -253,6 +258,13 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={e => { e.stopPropagation(); setExpanded(true); setActiveTab('render'); }}
+            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+            title="Render"
+          >
+            <Play className="h-3.5 w-3.5" />
+          </button>
           <button
             onClick={e => { e.stopPropagation(); setEditing(v => !v); setExpanded(true); }}
             className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
@@ -276,13 +288,11 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
               </button>
             </>
           ) : (
-            <button
-              onClick={e => { e.stopPropagation(); setDeleteConfirm(true); }}
-              className="rounded-lg p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              title="Delete"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <ItemActionsMenu
+              actions={[
+                { key: 'delete', label: 'Delete', icon: Trash2, destructive: true, onClick: () => setDeleteConfirm(true) },
+              ]}
+            />
           )}
           {expanded
             ? <ChevronUp className="h-4 w-4 text-muted-foreground/50" />

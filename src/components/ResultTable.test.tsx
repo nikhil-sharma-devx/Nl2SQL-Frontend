@@ -27,6 +27,7 @@ function makeResponse(): QueryResponse {
     tokens_used: 0,
     cached: false,
     response_time_ms: 5,
+    needs_clarification: false,
   };
 }
 
