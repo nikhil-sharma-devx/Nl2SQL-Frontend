@@ -10,7 +10,12 @@ import type { components } from '../api/schema';
 type Schemas = components['schemas'];
 
 export type QueryRequest = Schemas['QueryRequest'];
-export type QueryResponse = Schemas['QueryResponse'];
+// Optional multi-turn clarification fields — present before `npm run gen:api`
+// regenerates schema.d.ts, and backwards-compatible when absent.
+export type QueryResponse = Schemas['QueryResponse'] & {
+  needs_clarification?: boolean;
+  clarification_prompt?: string | null;
+};
 
 export interface ChatMessage {
   id: number;

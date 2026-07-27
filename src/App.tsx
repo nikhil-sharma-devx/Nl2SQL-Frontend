@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ConnectionProvider } from './context/ConnectionContext';
 import Layout from './components/Layout';
 import { Toaster } from './components/ui/toast';
 
@@ -14,9 +15,13 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const SavedQueriesPage = lazy(() => import('./pages/SavedQueriesPage'));
+const DashboardsPage = lazy(() => import('./pages/DashboardsPage'));
+const SchedulesPage = lazy(() => import('./pages/SchedulesPage'));
+const MetricsPage = lazy(() => import('./pages/MetricsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
+const SharedQueryView = lazy(() => import('./pages/SharedQueryView'));
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 
@@ -49,6 +54,8 @@ function AppRoutes() {
           path="/auth"
           element={isAuthenticated ? <Navigate to="/" replace /> : <AuthPage />}
         />
+        {/* Public shared-query view (token-authed, no login required) */}
+        <Route path="/shared/:token" element={<SharedQueryView />} />
         {/* Protected app routes */}
         <Route
           path="/"
@@ -63,6 +70,9 @@ function AppRoutes() {
           <Route path="history" element={<HistoryPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="saved" element={<SavedQueriesPage />} />
+          <Route path="dashboards" element={<DashboardsPage />} />
+          <Route path="schedules" element={<SchedulesPage />} />
+          <Route path="metrics" element={<MetricsPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="training" element={<TrainingPage />} />
           {/* Settings is a modal now; keep the path as a deep-link that opens it. */}
@@ -80,10 +90,12 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          <Toaster />
-        </BrowserRouter>
+        <ConnectionProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <Toaster />
+          </BrowserRouter>
+        </ConnectionProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );

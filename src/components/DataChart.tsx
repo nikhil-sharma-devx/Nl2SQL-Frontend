@@ -7,6 +7,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -34,8 +36,32 @@ const tooltipStyle = {
   color: 'var(--foreground)',
 };
 
+/** Bucket numeric values into `binCount` equal-width bins for a histogram. */
+function buildHistogram(values: number[], binCount: number): { bin: string; count: number }[] {
+  if (values.length === 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) return [{ bin: String(min), count: values.length }];
+  const width = (max - min) / binCount;
+  const bins = Array.from({ length: binCount }, (_, i) => ({
+    bin: (min + i * width).toFixed(1),
+    count: 0,
+  }));
+  for (const v of values) {
+    let idx = Math.floor((v - min) / width);
+    if (idx >= binCount) idx = binCount - 1;
+    if (idx < 0) idx = 0;
+    bins[idx].count += 1;
+  }
+  return bins;
+}
+
+const normalizeType = (t?: string): string =>
+  t && t.toLowerCase() !== 'none' ? t.toLowerCase() : 'table';
+
 const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
-  const [activeType, setActiveType] = useState<string>('table');
+  // Initialise from the config so a real chart renders immediately (no table flash).
+  const [activeType, setActiveType] = useState<string>(() => normalizeType(config?.type));
   const [showLegend, setShowLegend] = useState<boolean>(false);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -82,11 +108,7 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
   };
 
   useEffect(() => {
-    if (config && config.type && config.type !== 'none') {
-      setActiveType(config.type.toLowerCase());
-    } else {
-      setActiveType('table');
-    }
+    setActiveType(normalizeType(config?.type));
   }, [config]);
 
   if (!data || data.length === 0) {
@@ -169,8 +191,49 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
             </PieChart>
           </ResponsiveContainer>
         );
+      case 'scatter':
+        return (
+          <ResponsiveContainer width="100%" height={260}>
+            <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey={xAxisKey} name={xAxisKey} stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
+              <YAxis dataKey={yAxisKey} name={yAxisKey} stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ strokeDasharray: '3 3' }} />
+              <Scatter data={formattedData} fill="var(--chart-4)" />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+      case 'histogram': {
+        const values = data.map((r) => Number(r[yAxisKey])).filter((n) => !isNaN(n));
+        const bins = buildHistogram(values, 10);
+        return (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={bins} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="bin" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} />
+              <YAxis stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="count" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      }
+      case 'kpi': {
+        const nums = data.map((r) => Number(r[yAxisKey])).filter((n) => !isNaN(n));
+        const value = nums.length === 1 ? nums[0] : nums.reduce((a, b) => a + b, 0);
+        const label = nums.length === 1 ? yAxisKey : `Total ${yAxisKey}`;
+        return (
+          <div className="flex h-[260px] flex-col items-center justify-center">
+            <span className="font-display text-5xl font-bold text-foreground">
+              {Number.isFinite(value) ? value.toLocaleString() : '—'}
+            </span>
+            <span className="mt-2 text-sm text-muted-foreground">{label}</span>
+          </div>
+        );
+      }
       case 'table':
       default:
+        // 'map' and any unsupported type degrade to the raw table.
         return renderTable();
     }
   };

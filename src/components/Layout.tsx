@@ -23,6 +23,9 @@ import {
   PanelLeftOpen,
   HelpCircle,
   FileCode2,
+  LayoutDashboard,
+  Clock3,
+  BadgeCheck,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import ModelSwitcher from './ModelSwitcher';
@@ -46,6 +49,9 @@ const navItems = [
   { to: '/history', end: false, icon: Clock, label: 'History' },
   { to: '/analytics', end: false, icon: BarChart3, label: 'Analytics' },
   { to: '/saved', end: false, icon: Bookmark, label: 'Saved' },
+  { to: '/dashboards', end: false, icon: LayoutDashboard, label: 'Dashboards' },
+  { to: '/schedules', end: false, icon: Clock3, label: 'Schedules' },
+  { to: '/metrics', end: false, icon: BadgeCheck, label: 'Metrics' },
   { to: '/templates', end: false, icon: FileCode2, label: 'Templates' },
   { to: '/training', end: false, icon: BrainCircuit, label: 'Training' },
 ];
@@ -56,6 +62,9 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/history': { title: 'History', subtitle: 'Past sessions & conversations' },
   '/analytics': { title: 'Analytics', subtitle: 'Usage, accuracy & performance' },
   '/saved': { title: 'Saved Queries', subtitle: 'Your bookmarked SQL queries' },
+  '/dashboards': { title: 'Dashboards', subtitle: 'Auto-charted views of your data' },
+  '/schedules': { title: 'Scheduled Queries', subtitle: 'Recurring questions with email alerts' },
+  '/metrics': { title: 'Metrics Catalog', subtitle: 'Governed business metrics for this connection' },
   '/templates': { title: 'Query Templates', subtitle: 'Parameterized SQL patterns' },
   '/training': { title: 'Model Training', subtitle: 'Fine-tune on your query history' },
   '/help': { title: 'Help', subtitle: 'Documentation, shortcuts & FAQ' },

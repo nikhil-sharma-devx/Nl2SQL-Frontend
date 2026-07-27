@@ -29,9 +29,12 @@ const QueryPage = () => {
     validationError,
     rateLimitError,
     sendMessage,
+    sendCorrection,
     abortQuery,
     addDirectSqlMessage,
     handleRetry,
+    editMessage,
+    regenerateMessage,
     clearValidationError,
     messagesEndRef,
   } = useChat();
@@ -57,6 +60,10 @@ const QueryPage = () => {
     setTimeout(() => {
       sendMessage(dialect, true);
     }, 100);
+  };
+
+  const handleCorrection = async (correctionText: string) => {
+    await sendCorrection(dialect, execute, correctionText);
   };
 
   const handleSqlExecuted = (_messageId: number, _sql: string, execResult?: any) => {
@@ -100,6 +107,9 @@ const QueryPage = () => {
               onSqlExecuted={handleSqlExecuted}
               editedResults={editedResults}
               onFeedback={handleFeedback}
+              onCorrection={handleCorrection}
+              onEditQuestion={(messageId, newText) => editMessage(messageId, newText, dialect, execute)}
+              onRegenerate={(messageId) => regenerateMessage(messageId, dialect, execute)}
             />
           </div>
 

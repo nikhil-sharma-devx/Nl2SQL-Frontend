@@ -3,12 +3,21 @@
  * (Logic unchanged; restyled to the dark system.)
  */
 import { useState } from 'react';
-import { ThumbsUp, ThumbsDown, X, AlertTriangle, MessageSquare, Check } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, X, AlertTriangle, MessageSquare, Check, Wand2, Loader2 } from 'lucide-react';
+import { handleApiError } from '../api/client';
+import { toast } from './ui/toast';
 
 interface FeedbackPanelProps {
   question: string;
   generatedSql: string;
   onSubmit?: (feedback: FeedbackData) => void;
+  /**
+   * Send a natural-language correction of this turn through the query flow
+   * (e.g. "no, I meant customer_name"). The backend rewrites the previous
+   * question with the correction and regenerates SQL. When omitted, the
+   * correction UI is hidden.
+   */
+  onCorrection?: (correctionText: string) => void | Promise<void>;
 }
 
 interface FeedbackData {
@@ -29,13 +38,31 @@ const ERROR_CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
-const FeedbackPanel = ({ question, generatedSql, onSubmit }: FeedbackPanelProps) => {
+const FeedbackPanel = ({ question, generatedSql, onSubmit, onCorrection }: FeedbackPanelProps) => {
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [showErrorReport, setShowErrorReport] = useState(false);
   const [errorType, setErrorType] = useState('');
   const [userNotes, setUserNotes] = useState('');
   const [userCorrection, setUserCorrection] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [showCorrection, setShowCorrection] = useState(false);
+  const [correctionText, setCorrectionText] = useState('');
+  const [correctionLoading, setCorrectionLoading] = useState(false);
+
+  const handleApplyCorrection = async () => {
+    const text = correctionText.trim();
+    if (!text || correctionLoading || !onCorrection) return;
+    setCorrectionLoading(true);
+    try {
+      await onCorrection(text);
+      setCorrectionText('');
+      setShowCorrection(false);
+    } catch (err) {
+      toast({ title: handleApiError(err), variant: 'error' });
+    } finally {
+      setCorrectionLoading(false);
+    }
+  };
 
   const handlePositiveFeedback = () => {
     setFeedbackGiven('positive');
@@ -99,6 +126,54 @@ const FeedbackPanel = ({ question, generatedSql, onSubmit }: FeedbackPanelProps)
           >
             <ThumbsDown className="h-4 w-4" />
             No
+          </button>
+          {onCorrection && !showCorrection && (
+            <button
+              onClick={() => setShowCorrection(true)}
+              className="flex items-center gap-2 rounded-lg border border-border bg-foreground/[0.03] px-3 py-1.5 text-sm font-medium text-foreground/85 transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+            >
+              <Wand2 className="h-4 w-4" />
+              Correct it
+            </button>
+          )}
+        </div>
+      )}
+
+      {onCorrection && showCorrection && !showErrorReport && (
+        <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wand2 className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">Correct this query</span>
+            </div>
+            <button
+              onClick={() => { setShowCorrection(false); setCorrectionText(''); }}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tell me what to change — e.g. "no, I meant customer_name" or "use OrderDate instead".
+            I'll apply it to your previous question and regenerate the SQL.
+          </p>
+          <textarea
+            value={correctionText}
+            onChange={(e) => setCorrectionText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleApplyCorrection();
+            }}
+            placeholder="Describe the correction…"
+            disabled={correctionLoading}
+            className="min-h-[60px] w-full resize-y rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+          />
+          <button
+            onClick={handleApplyCorrection}
+            disabled={!correctionText.trim() || correctionLoading}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary/15 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {correctionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            {correctionLoading ? 'Applying…' : 'Apply correction'}
           </button>
         </div>
       )}
