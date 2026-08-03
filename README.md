@@ -35,12 +35,19 @@ A production-grade chat interface that turns plain-English questions into SQL qu
 - **Query templates** — Create, manage, and render parameterized NL + SQL templates with `{{placeholder}}` variables
 - **Glossary settings** — Manage your business dictionary; terms are automatically injected into query prompts by the backend
 - **Session management** — Named chat sessions with full message history, create / rename / delete
+- **Multi-turn conversation** — Follow-up questions resolve against prior turns in the same chat session
 - **SQL versioning** — Each query can be edited and re-run; all versions are kept and diffable
+- **Multiple database connections** — Add, switch, and manage several target databases per user (BYOD)
+- **Dashboards** — Save query results as widgets on a dashboard; chart type is auto-recommended and editable
+- **Scheduled queries** — Set up recurring NL questions with cron-style scheduling and email alerts on completion/failure
+- **Metrics catalog** — Browse and manage certified business metrics reused across queries
+- **Export & share** — Export results as CSV/JSON/SQL/PDF, or generate a revocable public share link (with copy/email/Slack)
 - **Analytics dashboard** — Token usage, success rates, popular tables, intent distribution, failure patterns
 - **Training data pipeline** — Collect feedback, export fine-tuning JSONL files, start and monitor OpenAI fine-tune jobs from the UI
 - **BYOK (Bring Your Own Key)** — Users can supply their own LLM API keys; server keys are the fallback
-- **Authentication** — Email / password + Google OAuth, OTP email verification, password reset
+- **Authentication** — Email / password + Google OAuth, OTP email verification, password reset, active-session management
 - **Onboarding checklist** — Collapsible progress tracker guiding new users through key setup steps
+- **Command palette** — `Ctrl/Cmd+K` fuzzy navigator to jump to any page or action
 - **Help & documentation page** — In-app FAQ, keyboard shortcuts, and feature guides
 - **Notification preferences** — Email digest, in-app alerts, and marketing opt-in toggles
 - **Appearance settings** — Theme, display density, and UI customisation options
@@ -152,17 +159,27 @@ src/
 │   ├── VersionedSQLDisplay.tsx # SQL version history switcher
 │   ├── FeedbackPanel.tsx       # Thumbs-up / down + correction form
 │   ├── OnboardingChecklist.tsx # Collapsible onboarding progress widget
+│   ├── ExportShareControls.tsx # Export (CSV/JSON/SQL/PDF) + share link controls
+│   ├── AddToDashboardModal.tsx # Save a result as a dashboard widget
+│   ├── DatabaseSelector.tsx    # Switch the active database connection
+│   ├── CommandPalette.tsx      # Ctrl/Cmd+K fuzzy navigator
+│   ├── SettingsModal.tsx       # Tabbed settings surface (opened from the sidebar)
 │   └── Layout.tsx              # Sidebar + top-nav shell
 ├── context/
 │   ├── AuthContext.tsx         # Global auth state, axios interceptor, OAuth
+│   ├── ConnectionContext.tsx   # Active database connection + switch/invalidate
+│   ├── CommandPaletteContext.tsx  # Command palette open/close state
 │   └── ThemeContext.tsx        # Light / dark theme
 ├── features/
 │   └── settings/
+│       ├── General.tsx         # LLM provider/model, custom instructions
 │       ├── Appearance.tsx      # Theme, density, and display preferences
 │       ├── GlossarySettings.tsx  # Business dictionary CRUD UI
+│       ├── RagSettings.tsx     # RAG pipeline feature flags (runtime-adjustable)
+│       ├── SqlStyle.tsx        # SQL formatting preferences
+│       ├── Instructions.tsx    # Custom instruction prompt editor
 │       ├── Notifications.tsx   # Email digest and in-app alert toggles
 │       ├── DataPrivacy.tsx     # Data retention and privacy controls
-│       ├── General.tsx         # General user preferences
 │       └── Security.tsx        # Password change and active sessions
 ├── hooks/
 │   ├── useChat.ts              # Session + message state, stream orchestration
@@ -170,14 +187,18 @@ src/
 │   └── useSettings.ts         # User preferences, BYOK, instructions
 ├── pages/
 │   ├── AuthPage.tsx            # Login / register / OTP / password reset
+│   ├── HomePage.tsx            # Workspace landing page — stats, recent activity, quick actions
 │   ├── QueryPage.tsx           # Main chat interface
-│   ├── SchemaPage.tsx          # Schema upload + graph view
+│   ├── SchemaPage.tsx          # Schema catalog: connections, sync, upload, graph view
 │   ├── HistoryPage.tsx         # Query history log
 │   ├── AnalyticsPage.tsx       # Usage analytics dashboard
 │   ├── SavedQueriesPage.tsx    # Bookmarked queries
+│   ├── DashboardsPage.tsx      # Saved dashboards with auto-charted widgets
+│   ├── SchedulesPage.tsx       # Scheduled queries & alerts
+│   ├── MetricsPage.tsx         # Certified metrics catalog
 │   ├── TemplatesPage.tsx       # Query template CRUD + render playground
 │   ├── TrainingPage.tsx        # Fine-tuning data management
-│   ├── SettingsPage.tsx        # Settings shell with tabbed sub-panels
+│   ├── SharedQueryView.tsx     # Public, token-authed view of a shared query (/shared/:token)
 │   └── HelpPage.tsx            # In-app FAQ, keyboard shortcuts, feature guides
 ├── syntax-highlighter.d.ts     # Type declarations for react-syntax-highlighter
 └── main.tsx                    # App entry point, router, query client
@@ -187,20 +208,38 @@ src/
 
 ## Key Pages & Capabilities
 
-### Query Page (/)
+### Home Page (/)
+
+Workspace landing page built entirely from data the app already exposes — quick stats (queries today, connections, active schedules, dashboards), recent chat activity, quick-action buttons, and a "continue working" section. No dedicated backend endpoint; it composes existing queries.
+
+### Query Page (/query)
 
 The main interface. Type a natural-language question, watch the SQL stream in real-time, then see the result table and an auto-suggested chart. Each response includes:
 
 - Generated SQL with one-click copy
 - Validation status and errors
 - Execution results (table + chart)
-- Follow-up question suggestions
-- Thumbs-up / thumbs-down feedback
+- Follow-up question suggestions (multi-turn — resolves against prior turns in the session)
+- Thumbs-up / thumbs-down feedback, with an inline correction flow
 - SQL version history
+- Export (CSV/JSON/SQL/PDF) and share-link controls
+- "Add to dashboard" to save the result as a widget
 
 ### Schema Page (/schema)
 
-Upload a SQL DDL file or refresh the schema from the live database. The interactive React Flow graph shows every table, its columns, and foreign-key relationships.
+Manage database connections (add/switch/test/delete), sync the catalog from the live DB or upload a schema JSON, and browse the interactive React Flow graph of every table, its columns, and foreign-key relationships.
+
+### Dashboards Page (/dashboards)
+
+Saved dashboards made of query-result widgets, each with an auto-recommended chart type. Duplicate, rename, or delete dashboards; add new widgets from any query result.
+
+### Schedules Page (/schedules)
+
+Create recurring NL queries on a cron-style schedule, with email alerts on completion or failure. Pause, resume, or run a schedule immediately.
+
+### Metrics Page (/metrics)
+
+Browse and manage the certified metrics catalog for the active connection — reusable, governed business metrics injected into the SQL-generation prompt.
 
 ### Templates Page (/templates)
 
@@ -218,23 +257,30 @@ Token consumption over time, query success / failure rates, most-used tables, in
 
 View collected feedback records, export a fine-tuning JSONL file, start an OpenAI fine-tune job, and monitor job progress — all without leaving the UI.
 
-### Settings Page (/settings)
+### Settings (modal, opened from the sidebar)
 
-Tabbed settings panel with the following sections:
+A tabbed settings surface rather than a dedicated page (so it's reachable from anywhere without losing your place):
 
 | Tab | Description |
 |---|---|
-| **General** | LLM provider / model, database connection string, custom instruction prompt |
+| **General** | LLM provider / model, custom instruction prompt |
 | **Appearance** | Theme (light / dark / system), display density, UI preferences |
 | **Glossary** | Manage business dictionary terms injected into query prompts |
+| **RAG** | Runtime-adjustable RAG pipeline feature flags |
+| **SQL Style** | SQL formatting preferences |
 | **Notifications** | Email digest, in-app alerts, marketing opt-in toggles |
 | **Security** | Password change, active session management |
 | **Data & Privacy** | Data retention settings, account deletion |
 | **API Keys (BYOK)** | Per-provider API key management |
+| **Usage** | Token/query usage summary |
 
 ### Help Page (/help)
 
 In-app documentation including an FAQ, keyboard shortcut reference, and feature-by-feature guides — no external docs link needed.
+
+### Command Palette (Ctrl/Cmd+K)
+
+Fuzzy-searchable overlay to jump straight to any page or run a high-frequency action, without leaving the keyboard.
 
 ### Onboarding Checklist
 
