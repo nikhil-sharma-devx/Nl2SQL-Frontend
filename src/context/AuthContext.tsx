@@ -21,6 +21,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import apiClient from '../api/client';
+import { queryClient } from '../lib/queryClient';
 import {
   getRefreshToken as storedGetRefreshToken,
   getToken as storedGetToken,
@@ -199,6 +200,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/auth/login`, { email, password });
+      // Wipe any cached data from a previous account signed into this tab
+      // (chats, dashboards, schedules, metrics, templates...) before the new
+      // user's queries mount — otherwise stale cross-account data can paint.
+      queryClient.clear();
       applyAuthResponse(data);
     } finally {
       setIsLoading(false);
@@ -223,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/auth/verify-otp`, { email, otp_code: otp });
+      queryClient.clear();
       applyAuthResponse(data);
     } finally {
       setIsLoading(false);
@@ -242,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/auth/google`, { credential });
+      queryClient.clear();
       applyAuthResponse(data);
     } finally {
       setIsLoading(false);
@@ -259,6 +266,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     storeSetRefreshToken(null);
     setUser(null);
+    // Drop every cached query so the next account signed into this tab never
+    // renders this session's chats/dashboards/schedules/metrics/templates.
+    queryClient.clear();
   }, [setToken]);
 
   // ── Value ─────────────────────────────────────────────────────────────────

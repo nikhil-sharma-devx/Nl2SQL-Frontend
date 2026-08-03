@@ -944,7 +944,7 @@ export interface paths {
         };
         /**
          * Get Analytics Summary
-         * @description Get overall analytics summary.
+         * @description Get overall analytics summary, scoped to the caller.
          */
         get: operations["get_analytics_summary_api_v1_analytics_summary_get"];
         put?: never;
@@ -964,7 +964,7 @@ export interface paths {
         };
         /**
          * Get Popular Queries
-         * @description Get most frequently asked queries.
+         * @description Get most frequently asked queries, scoped to the caller.
          */
         get: operations["get_popular_queries_api_v1_analytics_popular_queries_get"];
         put?: never;
@@ -984,7 +984,7 @@ export interface paths {
         };
         /**
          * Get Failure Patterns
-         * @description Get common failure patterns.
+         * @description Get common failure patterns, scoped to the caller.
          */
         get: operations["get_failure_patterns_api_v1_analytics_failure_patterns_get"];
         put?: never;
@@ -1004,7 +1004,7 @@ export interface paths {
         };
         /**
          * Get Table Usage
-         * @description Get most frequently retrieved tables.
+         * @description Get most frequently retrieved tables, scoped to the caller.
          */
         get: operations["get_table_usage_api_v1_analytics_table_usage_get"];
         put?: never;
@@ -1024,7 +1024,7 @@ export interface paths {
         };
         /**
          * Get Intent Distribution
-         * @description Get distribution of query intent types.
+         * @description Get distribution of query intent types, scoped to the caller.
          */
         get: operations["get_intent_distribution_api_v1_analytics_intent_distribution_get"];
         put?: never;
@@ -1044,7 +1044,7 @@ export interface paths {
         };
         /**
          * Get Prompt Version Performance
-         * @description Get performance metrics for each prompt version.
+         * @description Get performance metrics for each prompt version, scoped to the caller.
          */
         get: operations["get_prompt_version_performance_api_v1_analytics_prompt_versions_get"];
         put?: never;
