@@ -6,7 +6,7 @@
  * Business logic, modes, and handlers are unchanged.
  */
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { forgotPassword, resetPassword } from '../api/client';
@@ -42,6 +42,11 @@ const titleByMode: Record<Mode, string> = {
 const AuthPage = () => {
   const { login, register, verifyOTP, resendOTP, googleLogin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  // Only ever navigate to a relative in-app path — never follow an
+  // externally-supplied absolute URL from this query param.
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/';
 
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -81,10 +86,10 @@ const AuthPage = () => {
         setPassword('');
       } else if (mode === 'verify') {
         await verifyOTP(email, otpCode);
-        navigate('/');
+        navigate(redirectTo);
       } else if (mode === 'login') {
         await login(email, password);
-        navigate('/');
+        navigate(redirectTo);
       } else {
         await register(email, password, fullName || undefined);
         setMode('verify');
@@ -128,7 +133,7 @@ const AuthPage = () => {
     setError(null);
     try {
       await googleLogin(credentialResponse.credential);
-      navigate('/');
+      navigate(redirectTo);
     } catch {
       setError('Google sign-in failed. Please try again.');
     } finally {

@@ -26,6 +26,8 @@ import {
   LayoutDashboard,
   Clock3,
   BadgeCheck,
+  Home,
+  Command,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import ModelSwitcher from './ModelSwitcher';
@@ -35,6 +37,7 @@ import UsageModal from './UsageModal';
 import SettingsModal from './SettingsModal';
 import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
+import { useCommandPalette } from '@/context/CommandPaletteContext';
 import { getSessions, checkHealth, getNotificationPrefs, type SessionListResponse } from '../api/client';
 import { setInAppNotificationsEnabled } from './ui/toast';
 
@@ -43,8 +46,9 @@ type SessionSummary = SessionListResponse['sessions'][number];
 import { useAuth } from '../context/AuthContext';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { to: '/', end: true, icon: Database, label: 'Query' },
+const navItems: { to: string; end: boolean; icon: typeof Home; label: string }[] = [
+  { to: '/', end: true, icon: Home, label: 'Home' },
+  { to: '/query', end: false, icon: Database, label: 'Query' },
   { to: '/schema', end: false, icon: Upload, label: 'Schema' },
   { to: '/history', end: false, icon: Clock, label: 'History' },
   { to: '/analytics', end: false, icon: BarChart3, label: 'Analytics' },
@@ -57,7 +61,8 @@ const navItems = [
 ];
 
 const pageMeta: Record<string, { title: string; subtitle: string }> = {
-  '/': { title: 'Query Studio', subtitle: 'Ask your database in plain English' },
+  '/': { title: 'Home', subtitle: 'Your workspace at a glance' },
+  '/query': { title: 'Query Studio', subtitle: 'Ask your database in plain English' },
   '/schema': { title: 'Schema', subtitle: 'Connections, ingestion & live sync' },
   '/history': { title: 'History', subtitle: 'Past sessions & conversations' },
   '/analytics': { title: 'Analytics', subtitle: 'Usage, accuracy & performance' },
@@ -139,7 +144,8 @@ const Layout = () => {
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const sessionsScrollRef = useRef<HTMLDivElement>(null);
-  const isQueryPage = location.pathname === '/';
+  const isQueryPage = location.pathname === '/query';
+  const { openPalette } = useCommandPalette();
 
   // Close user menu on outside click
   useEffect(() => {
@@ -190,7 +196,7 @@ const Layout = () => {
         const tag = target?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
         e.preventDefault();
-        navigate('/', { state: { newChat: true } });
+        navigate('/query', { state: { newChat: true } });
         setMobileOpen(false);
       }
     };
@@ -262,7 +268,7 @@ const Layout = () => {
   const sessionGroups = useMemo(() => groupByDate(filteredSessions), [filteredSessions]);
 
   const handleSessionClick = (session: { id: string }) => {
-    navigate('/', { state: { loadSessionId: session.id } });
+    navigate('/query', { state: { loadSessionId: session.id } });
     setMobileOpen(false);
   };
 
@@ -340,7 +346,7 @@ const Layout = () => {
           <div className={cn('px-2', isIconMode ? 'flex justify-center pt-3' : 'pt-2')}>
             {isIconMode ? (
               <button
-                onClick={() => navigate('/', { state: { newChat: true } })}
+                onClick={() => navigate('/query', { state: { newChat: true } })}
                 title="New chat"
                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary transition-colors hover:bg-primary/20"
               >
@@ -348,7 +354,7 @@ const Layout = () => {
               </button>
             ) : (
               <button
-                onClick={() => { navigate('/', { state: { newChat: true } }); setMobileOpen(false); }}
+                onClick={() => { navigate('/query', { state: { newChat: true } }); setMobileOpen(false); }}
                 className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:shadow-[0_0_16px_rgba(16,185,129,0.15)]"
               >
                 <span className="flex items-center gap-2.5">
@@ -633,6 +639,17 @@ const Layout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={openPalette}
+              title="Search & jump to anything (Ctrl+K)"
+              className="hidden items-center gap-2 rounded-lg border border-border bg-foreground/[0.02] px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground sm:flex"
+            >
+              <Command className="h-3.5 w-3.5" />
+              <span>Search</span>
+              <kbd className="rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80">
+                Ctrl K
+              </kbd>
+            </button>
             <div
               title={isHealthy ? 'Backend connected' : 'Backend unreachable'}
               className="flex items-center gap-1.5"

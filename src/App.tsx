@@ -1,14 +1,17 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConnectionProvider } from './context/ConnectionContext';
+import { CommandPaletteProvider } from './context/CommandPaletteContext';
 import Layout from './components/Layout';
+import CommandPalette from './components/CommandPalette';
 import { Toaster } from './components/ui/toast';
 
 // Route-level code splitting — each page loads only when first visited,
 // keeping heavy dependencies (React Flow, recharts, syntax highlighter)
 // out of the initial bundle.
+const HomePage = lazy(() => import('./pages/HomePage'));
 const QueryPage = lazy(() => import('./pages/QueryPage'));
 const SchemaPage = lazy(() => import('./pages/SchemaPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
@@ -34,13 +37,17 @@ function RouteFallback() {
   );
 }
 
-/** Redirect unauthenticated users to /auth */
+/** Redirect unauthenticated users to /auth, preserving the destination so
+ * deep links (e.g. an emailed /invite/:token) survive a login/register. */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isBootstrapping } = useAuth();
+  const location = useLocation();
   // While the initial session restore/refresh is in flight, don't bounce a
   // still-valid (refreshable) session to the login page — show the loader.
   if (isBootstrapping) return <RouteFallback />;
-  return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
+  if (isAuthenticated) return <>{children}</>;
+  const redirect = encodeURIComponent(location.pathname + location.search);
+  return <Navigate to={`/auth?redirect=${redirect}`} replace />;
 }
 
 function AppRoutes() {
@@ -65,7 +72,8 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<QueryPage />} />
+          <Route index element={<HomePage />} />
+          <Route path="query" element={<QueryPage />} />
           <Route path="schema" element={<SchemaPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
@@ -92,8 +100,11 @@ function App() {
       <AuthProvider>
         <ConnectionProvider>
           <BrowserRouter>
-            <AppRoutes />
-            <Toaster />
+            <CommandPaletteProvider>
+              <AppRoutes />
+              <CommandPalette />
+              <Toaster />
+            </CommandPaletteProvider>
           </BrowserRouter>
         </ConnectionProvider>
       </AuthProvider>

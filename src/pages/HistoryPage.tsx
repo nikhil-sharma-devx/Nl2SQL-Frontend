@@ -135,7 +135,7 @@ const HistoryPage = () => {
 
   const handleNavigateToQuery = () => {
     if (selectedSession) {
-      navigate('/', { state: { loadSessionId: selectedSession.id } });
+      navigate('/query', { state: { loadSessionId: selectedSession.id } });
     }
   };
 

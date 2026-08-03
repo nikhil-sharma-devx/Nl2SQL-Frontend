@@ -18,6 +18,7 @@ interface Shortcut {
 }
 
 const SHORTCUTS: Shortcut[] = [
+  { keys: ['Ctrl', 'K'], label: 'Open command palette' },
   { keys: ['Enter'], label: 'Submit query' },
   { keys: ['Ctrl', 'Enter'], label: 'Submit query' },
   { keys: ['Shift', 'Enter'], label: 'New line in the query box' },
