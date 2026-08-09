@@ -92,7 +92,7 @@ function MetricCard({ metric }: { metric: Metric }) {
   const hasValidationErrors = metric.validation_errors.length > 0;
 
   return (
-    <div className="rounded-xl border border-border bg-card/70 p-4">
+    <div className="glass-card card-lift rounded-xl p-4">
       {editing ? (
         <div className="space-y-2">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Metric name" />
@@ -128,18 +128,15 @@ function MetricCard({ metric }: { metric: Metric }) {
                   <Badge variant="secondary" className="normal-case tracking-normal">Example</Badge>
                 )}
                 {metric.certified && (
-                  <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                  <Badge variant="violet">
                     <BadgeCheck className="h-3 w-3" />
                     Certified
-                  </span>
+                  </Badge>
                 )}
                 {hasValidationErrors && (
-                  <span
-                    className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive"
-                    title={metric.validation_errors.join('; ')}
-                  >
+                  <Badge variant="destructive" title={metric.validation_errors.join('; ')}>
                     SQL warning
-                  </span>
+                  </Badge>
                 )}
               </div>
               {metric.description && (
@@ -149,9 +146,9 @@ function MetricCard({ metric }: { metric: Metric }) {
               {metric.tags.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {metric.tags.map((t) => (
-                    <span key={t} className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <Badge key={t} variant="outline">
                       {t}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}

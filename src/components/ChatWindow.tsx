@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AiOrb from './AiOrb';
 import SqlPreview from './SqlPreview';
 import ResultTable from './ResultTable';
 import FeedbackPanel from './FeedbackPanel';
@@ -163,7 +164,7 @@ const ChatWindow = ({
                 <TerminalSquare className="h-4 w-4" />
               )}
             </div>
-            <div className="chat-bubble chat-bubble-ai w-full max-w-[90%] px-5 py-4">
+            <div className="chat-bubble chat-bubble-ai holo-border w-full max-w-[90%] px-5 py-4">
               {msg.response.intent_type === 'direct_sql' && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-400 font-mono text-[10px] font-bold uppercase tracking-wider">
@@ -353,10 +354,10 @@ const ChatWindow = ({
       {/* Loading / Thinking State */}
       {isLoading && (
         <div className="flex animate-slide-up justify-start gap-3">
-          <div className="mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_18px_rgba(16,185,129,0.5),0_0_6px_rgba(16,185,129,0.3)] sm:flex">
-            <TerminalSquare className="h-4 w-4" />
+          <div className="mt-1 hidden sm:flex">
+            <AiOrb size="sm" />
           </div>
-          <div className="w-full max-w-[90%] rounded-2xl rounded-tl-sm border border-border bg-card/70 px-5 py-4 shadow-lg backdrop-blur-md">
+          <div className="chat-bubble chat-bubble-ai holo-border w-full max-w-[90%] px-5 py-4">
             <div className="mb-3 flex items-center gap-2">
               <BrainCircuit className="h-4 w-4 text-primary" />
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">

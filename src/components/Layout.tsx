@@ -28,6 +28,8 @@ import {
   BadgeCheck,
   Home,
   Command,
+  ChevronDown,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import ModelSwitcher from './ModelSwitcher';
@@ -38,6 +40,7 @@ import SettingsModal from './SettingsModal';
 import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useCommandPalette } from '@/context/CommandPaletteContext';
+import { useMagneticHover } from '@/hooks/useMagneticHover';
 import { getSessions, checkHealth, getNotificationPrefs, type SessionListResponse } from '../api/client';
 import { setInAppNotificationsEnabled } from './ui/toast';
 
@@ -46,19 +49,28 @@ type SessionSummary = SessionListResponse['sessions'][number];
 import { useAuth } from '../context/AuthContext';
 import { cn } from '@/lib/utils';
 
-const navItems: { to: string; end: boolean; icon: typeof Home; label: string }[] = [
+type NavItem = { to: string; end: boolean; icon: typeof Home; label: string };
+
+// Primary: always visible — the day-to-day workspace.
+const primaryNavItems: NavItem[] = [
   { to: '/', end: true, icon: Home, label: 'Home' },
   { to: '/query', end: false, icon: Database, label: 'Query' },
   { to: '/schema', end: false, icon: Upload, label: 'Schema' },
   { to: '/history', end: false, icon: Clock, label: 'History' },
   { to: '/analytics', end: false, icon: BarChart3, label: 'Analytics' },
-  { to: '/saved', end: false, icon: Bookmark, label: 'Saved' },
   { to: '/dashboards', end: false, icon: LayoutDashboard, label: 'Dashboards' },
+];
+
+// Secondary: tucked behind "More" — used less frequently.
+const secondaryNavItems: NavItem[] = [
+  { to: '/saved', end: false, icon: Bookmark, label: 'Saved' },
   { to: '/schedules', end: false, icon: Clock3, label: 'Schedules' },
   { to: '/metrics', end: false, icon: BadgeCheck, label: 'Metrics' },
   { to: '/templates', end: false, icon: FileCode2, label: 'Templates' },
   { to: '/training', end: false, icon: BrainCircuit, label: 'Training' },
 ];
+
+const MORE_EXPANDED_KEY = 'nl2sql:nav-more-expanded';
 
 const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/': { title: 'Home', subtitle: 'Your workspace at a glance' },
@@ -141,11 +153,31 @@ const Layout = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const isOnSecondaryPage = secondaryNavItems.some((item) =>
+    item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
+  );
+  const [moreExpanded, setMoreExpanded] = useState(
+    () => isOnSecondaryPage || localStorage.getItem(MORE_EXPANDED_KEY) === '1',
+  );
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const sessionsScrollRef = useRef<HTMLDivElement>(null);
+  const newChatBtnRef = useMagneticHover<HTMLButtonElement>();
   const isQueryPage = location.pathname === '/query';
   const { openPalette } = useCommandPalette();
+
+  // Land on a secondary-nav page (e.g. a deep link to /training) → auto-reveal that group.
+  useEffect(() => {
+    if (isOnSecondaryPage) setMoreExpanded(true);
+  }, [isOnSecondaryPage]);
+
+  const toggleMoreExpanded = () => {
+    setMoreExpanded((prev) => {
+      const next = !prev;
+      localStorage.setItem(MORE_EXPANDED_KEY, next ? '1' : '0');
+      return next;
+    });
+  };
 
   // Close user menu on outside click
   useEffect(() => {
@@ -354,6 +386,7 @@ const Layout = () => {
               </button>
             ) : (
               <button
+                ref={newChatBtnRef}
                 onClick={() => { navigate('/query', { state: { newChat: true } }); setMobileOpen(false); }}
                 className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:shadow-[0_0_16px_rgba(16,185,129,0.15)]"
               >
@@ -418,7 +451,7 @@ const Layout = () => {
                 </p>
               )}
               <div className={cn('space-y-0.5', isIconMode && 'flex flex-col items-center gap-0.5')}>
-                {navItems.map(({ to, end, icon: Icon, label }) => (
+                {primaryNavItems.map(({ to, end, icon: Icon, label }) => (
                   <NavLink
                     key={label}
                     to={to}
@@ -455,6 +488,62 @@ const Layout = () => {
                     )}
                   </NavLink>
                 ))}
+
+                {/* "More" toggle — reveals less-frequently-used tools (icon mode: always shown, flat) */}
+                {!isIconMode && (
+                  <button
+                    onClick={toggleMoreExpanded}
+                    className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
+                    aria-expanded={moreExpanded}
+                  >
+                    <MoreHorizontal className="h-[18px] w-[18px] shrink-0 text-muted-foreground/75 group-hover:text-foreground/80" />
+                    <span className="flex-1 text-left">More</span>
+                    <ChevronDown
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0 text-muted-foreground/55 transition-transform duration-200',
+                        moreExpanded && 'rotate-180',
+                      )}
+                    />
+                  </button>
+                )}
+
+                {(isIconMode || moreExpanded) &&
+                  secondaryNavItems.map(({ to, end, icon: Icon, label }) => (
+                    <NavLink
+                      key={label}
+                      to={to}
+                      end={end}
+                      onClick={() => setMobileOpen(false)}
+                      title={isIconMode ? label : undefined}
+                      className={({ isActive }) =>
+                        cn(
+                          'group relative flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
+                          isIconMode ? 'h-10 w-10 justify-center' : 'w-full px-3 py-2.5',
+                          isActive
+                            ? 'bg-foreground/[0.07] text-foreground'
+                            : 'text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground',
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {isActive && !isIconMode && (
+                            <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8),0_0_5px_rgba(16,185,129,0.5)]" />
+                          )}
+                          {isActive && isIconMode && (
+                            <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
+                          )}
+                          <Icon
+                            className={cn(
+                              'h-[18px] w-[18px] shrink-0',
+                              isActive ? 'text-primary' : 'text-muted-foreground/75 group-hover:text-foreground/80',
+                            )}
+                          />
+                          {!isIconMode && <span>{label}</span>}
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
               </div>
             </nav>
 

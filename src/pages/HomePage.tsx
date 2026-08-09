@@ -268,7 +268,7 @@ export default function HomePage() {
 
         <button
           onClick={openPalette}
-          className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-foreground/[0.02] px-4 py-2.5 text-left text-sm text-muted-foreground/70 transition-colors hover:bg-foreground/[0.05] hover:text-foreground md:w-80"
+          className="card-lift flex w-full items-center gap-2.5 rounded-xl border border-border bg-foreground/[0.02] px-4 py-2.5 text-left text-sm text-muted-foreground/70 transition-colors hover:bg-foreground/[0.05] hover:text-foreground md:w-80"
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="flex-1">Search anything…</span>
@@ -451,7 +451,7 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <Card className="p-4">
+    <Card className="card-lift p-4">
       <div className="flex items-center gap-2 text-muted-foreground/70">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-medium">{label}</span>
@@ -459,7 +459,7 @@ function StatCard({
       {loading || value === undefined ? (
         <Skeleton className="mt-2 h-7 w-12 rounded-md" />
       ) : (
-        <p className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground">{value}</p>
+        <p className="mt-1 font-display text-2xl font-bold tracking-tight text-gradient-primary">{value}</p>
       )}
     </Card>
   );

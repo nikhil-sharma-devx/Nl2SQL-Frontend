@@ -142,7 +142,7 @@ function PinnedTablesSection() {
         ) : (
           <div className="space-y-2">
             {tables.map(t => (
-              <div key={t.id} className="rounded-lg border border-border bg-card/40 px-3 py-2.5">
+              <div key={t.id} className="glass-card rounded-lg px-3 py-2.5">
                 {editingId === t.id ? (
                   <div className="flex items-center gap-2">
                     <Input
@@ -357,7 +357,7 @@ function SchemaTablesSection() {
             {filtered.map(t => {
               const isOpen = expanded.has(t.id);
               return (
-                <div key={t.id} className="rounded-lg border border-border bg-card/40">
+                <div key={t.id} className="glass-card rounded-lg">
                   <div className="flex items-center gap-2 px-3 py-2.5">
                     <button
                       onClick={() => toggleExpand(t)}
@@ -644,11 +644,11 @@ const SchemaPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-default">
+              <div className="glass-card card-lift rounded-xl p-4 cursor-default">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Chunks Stored</p>
                 <p className="mt-1 font-display text-3xl font-bold text-foreground">{status?.chunks_stored || 0}</p>
               </div>
-              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-default">
+              <div className="glass-card card-lift rounded-xl p-4 cursor-default">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Vector Store</p>
                 <div className="mt-1 flex items-center gap-2">
                   {status?.vector_store_ready ? (

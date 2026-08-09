@@ -229,7 +229,7 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
+    <div className="glass-card card-lift rounded-xl overflow-hidden">
       {/* Header */}
       <div
         className="flex cursor-pointer items-start gap-3 p-4 hover:bg-foreground/[0.02] transition-colors"
@@ -243,14 +243,14 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
               <Badge variant="secondary" className="normal-case tracking-normal">Example</Badge>
             )}
             {paramCount > 0 && (
-              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
+              <Badge variant="outline" className="font-mono">
                 {paramCount} param{paramCount !== 1 ? 's' : ''}
-              </span>
+              </Badge>
             )}
             {template.tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+              <Badge key={tag} variant="outline">
                 <Tag className="h-2.5 w-2.5" />{tag}
-              </span>
+              </Badge>
             ))}
           </div>
           {template.description && (

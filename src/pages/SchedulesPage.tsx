@@ -39,13 +39,13 @@ const NOTIFY_CONDITIONS = [
   { value: 'on_change', label: 'Only when results change' },
 ] as const;
 
-function statusBadge(schedule: Schedule): { label: string; className: string } {
-  if (schedule.is_paused) return { label: 'Paused', className: 'bg-muted text-muted-foreground' };
+function statusBadge(schedule: Schedule): { label: string; variant: 'secondary' | 'destructive' | 'default' } {
+  if (schedule.is_paused) return { label: 'Paused', variant: 'secondary' };
   if (schedule.last_status === 'failed' || schedule.last_status === 'timeout') {
-    return { label: 'Failing', className: 'bg-destructive/10 text-destructive' };
+    return { label: 'Failing', variant: 'destructive' };
   }
-  if (schedule.last_status === 'success') return { label: 'Healthy', className: 'bg-primary/10 text-primary' };
-  return { label: 'Pending first run', className: 'bg-muted text-muted-foreground' };
+  if (schedule.last_status === 'success') return { label: 'Healthy', variant: 'default' };
+  return { label: 'Pending first run', variant: 'secondary' };
 }
 
 function HistoryPanel({ scheduleId }: { scheduleId: string }) {
@@ -179,7 +179,7 @@ export default function SchedulesPage() {
       </div>
 
       {showCreate && (
-        <div className="space-y-3 rounded-xl border border-border bg-card/70 p-4">
+        <div className="glass-card space-y-3 rounded-xl p-4">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Schedule name…" />
           <Input
             value={nlPrompt}
@@ -244,7 +244,7 @@ export default function SchedulesPage() {
             const badge = statusBadge(s);
             const expanded = expandedId === s.id;
             return (
-              <div key={s.id} className="rounded-xl border border-border bg-card/70 p-4">
+              <div key={s.id} className="glass-card card-lift rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -252,9 +252,7 @@ export default function SchedulesPage() {
                       {s.is_builtin && (
                         <Badge variant="secondary" className="normal-case tracking-normal">Example</Badge>
                       )}
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}>
-                        {badge.label}
-                      </span>
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
                       {s.notify_email && <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">

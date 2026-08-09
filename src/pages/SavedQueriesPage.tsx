@@ -198,7 +198,7 @@ export default function SavedQueriesPage() {
             return (
               <div
                 key={q.id}
-                className="rounded-xl border border-border bg-card/70 transition-all duration-200 hover:border-primary/30"
+                className="glass-card card-lift rounded-xl"
               >
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">

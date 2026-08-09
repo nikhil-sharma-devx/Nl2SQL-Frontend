@@ -225,7 +225,7 @@ export default function TrainingPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="card-lift border-border bg-card/60 backdrop-blur-sm">
+          <Card key={label} className="card-lift">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${bg}`}>
@@ -243,7 +243,7 @@ export default function TrainingPage() {
 
       {/* Intent distribution */}
       {intentEntries.length > 0 && (
-        <Card className="border-border bg-card/60 backdrop-blur-sm">
+        <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Intent Distribution</CardTitle>
           </CardHeader>
@@ -286,7 +286,7 @@ export default function TrainingPage() {
       )}
 
       {/* Download Training Data — FREE */}
-      <Card className="border-border bg-card/60 backdrop-blur-sm">
+      <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -331,7 +331,7 @@ export default function TrainingPage() {
       </Card>
 
       {/* Cloud Fine-Tuning — PAID */}
-      <Card className="border-border bg-card/60 backdrop-blur-sm">
+      <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -455,7 +455,7 @@ export default function TrainingPage() {
       </Card>
 
       {/* Jobs Table */}
-      <Card className="border-border bg-card/60 backdrop-blur-sm">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
             <Clock className="h-4 w-4 text-primary" />
@@ -539,7 +539,7 @@ export default function TrainingPage() {
       </Card>
 
       {/* How it works */}
-      <Card className="border-border bg-card/60 backdrop-blur-sm">
+      <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">How It Works</CardTitle>
         </CardHeader>

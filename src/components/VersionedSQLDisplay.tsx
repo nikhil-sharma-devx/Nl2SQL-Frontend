@@ -73,7 +73,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background/60 backdrop-blur-md">
+    <div className="holo-border overflow-hidden rounded-xl border border-border bg-background/60 backdrop-blur-md">
       {/* Toolbar */}
       <div className="flex items-center justify-between border-b border-border bg-foreground/[0.03] px-3 py-2">
         <div className="flex items-center gap-2">
@@ -181,12 +181,12 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
             <span className="text-sm font-medium text-foreground/85">Results (Version {currentIndex + 1})</span>
             <span className="font-mono text-xs text-muted-foreground/80">{currentVersion.results.length || 0} rows</span>
           </div>
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="max-h-72 overflow-auto custom-scrollbar">
             <table className="w-full text-sm">
-              <thead className="border-b border-border bg-background/60">
+              <thead className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
                 <tr>
                   {Object.keys(currentVersion.results[0] || {}).map((col) => (
-                    <th key={col} className="px-4 py-2 text-left font-semibold text-foreground/85">{col}</th>
+                    <th key={col} className="px-4 py-3 text-left text-xs font-semibold text-foreground/85">{col}</th>
                   ))}
                 </tr>
               </thead>

@@ -5,7 +5,7 @@
  * shadcn primitives, and a dual-mode (login / register) tab transition.
  * Business logic, modes, and handlers are unchanged.
  */
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +28,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import AiOrb from '@/components/AiOrb';
+import { useMagneticHover } from '@/hooks/useMagneticHover';
 
 type Mode = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
 
@@ -59,6 +61,20 @@ const AuthPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const clearError = () => setError(null);
+
+  const submitBtnRef = useMagneticHover<HTMLButtonElement>();
+  const googleBtnRef = useMagneticHover<HTMLDivElement>();
+  const spotlightRef = useRef<HTMLDivElement>(null);
+
+  const handleSpotlightMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = spotlightRef.current;
+    if (!el) return;
+    el.style.opacity = '1';
+    el.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+  };
+  const handleSpotlightLeave = () => {
+    if (spotlightRef.current) spotlightRef.current.style.opacity = '0';
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -145,10 +161,23 @@ const AuthPage = () => {
     !!error && !error.toLowerCase().includes('success') && !error.toLowerCase().includes('sent');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background p-4"
+      onMouseMove={handleSpotlightMove}
+      onMouseLeave={handleSpotlightLeave}
+    >
       <div className="auth-blob auth-blob-1" />
       <div className="auth-blob auth-blob-2" />
       <div className="auth-blob auth-blob-3" />
+      <div
+        ref={spotlightRef}
+        className="pointer-events-none fixed left-0 top-0 z-0 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity duration-300"
+        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.10), transparent 70%)' }}
+        aria-hidden="true"
+      />
+      <div className="pointer-events-none absolute right-[8%] top-1/2 hidden -translate-y-1/2 opacity-50 lg:block">
+        <AiOrb size="lg" />
+      </div>
 
       <div className="relative z-10 w-full max-w-[420px] animate-slide-up rounded-3xl border border-border/80 bg-popover/82 p-8 shadow-[0_40px_140px_-20px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-2xl">
         <div className="mb-7 flex items-center gap-3.5">
@@ -333,7 +362,14 @@ const AuthPage = () => {
             </div>
           )}
 
-          <Button id="auth-submit" type="submit" disabled={isLoading} size="lg" className="mt-1 w-full">
+          <Button
+            ref={submitBtnRef}
+            id="auth-submit"
+            type="submit"
+            disabled={isLoading}
+            size="lg"
+            className="mt-1 w-full"
+          >
             {isLoading ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
             ) : (
@@ -359,7 +395,7 @@ const AuthPage = () => {
               or continue with
               <span className="h-px flex-1 bg-border" />
             </div>
-            <div className="flex justify-center">
+            <div ref={googleBtnRef} className="flex justify-center">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={() => setError('Google sign-in was cancelled or failed')}

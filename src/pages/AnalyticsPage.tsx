@@ -413,15 +413,15 @@ export default function AnalyticsPage() {
           <CardHeader><CardTitle>Additional Statistics</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-pointer">
+              <div className="glass-card card-lift rounded-xl p-4 cursor-pointer">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Tokens Used</p>
                 <p className="mt-1 font-display text-2xl font-bold text-foreground">{Math.round(summary.avg_tokens_used)}</p>
               </div>
-              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-pointer">
+              <div className="glass-card card-lift rounded-xl p-4 cursor-pointer">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cached Queries</p>
                 <p className="mt-1 font-display text-2xl font-bold text-cyan-400">{summary.cached_queries}</p>
               </div>
-              <div className="card-lift rounded-xl border border-border bg-background/60 p-4 cursor-pointer">
+              <div className="glass-card card-lift rounded-xl p-4 cursor-pointer">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Failed Queries</p>
                 <p className="mt-1 font-display text-2xl font-bold text-rose-400">{summary.failed_queries}</p>
               </div>
@@ -442,12 +442,12 @@ export default function AnalyticsPage() {
                 {cacheStats && cacheStats.total_lookups > 0 ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="glass-card rounded-xl p-4">
                         <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">L1 · Exact Hit %</p>
                         <p className="mt-1 font-display text-2xl font-bold text-primary">{(cacheStats.exact_hit_rate * 100).toFixed(1)}%</p>
                         <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/70">{cacheStats.exact_hits} hits</p>
                       </div>
-                      <div className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="glass-card rounded-xl p-4">
                         <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">L2 · Semantic Hit %</p>
                         <p className="mt-1 font-display text-2xl font-bold text-cyan-400">{(cacheStats.semantic_hit_rate * 100).toFixed(1)}%</p>
                         <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/70">{cacheStats.semantic_hits} hits</p>

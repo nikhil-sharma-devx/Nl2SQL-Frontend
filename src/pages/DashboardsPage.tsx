@@ -167,7 +167,7 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
             const rows = fresh?.rows ?? [];
             const config = widgetChartConfig(w.chart_type, w.chart_config, rows);
             return (
-              <div key={w.id} className="rounded-xl border border-border bg-card/70 p-4">
+              <div key={w.id} className="glass-card rounded-xl p-4">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="truncate font-medium text-foreground">{w.title}</p>
                   <div className="flex items-center gap-1.5">
@@ -324,7 +324,7 @@ export default function DashboardsPage() {
           {items.map((d) => (
             <div
               key={d.id}
-              className="group flex flex-col justify-between rounded-xl border border-border bg-card/70 p-4 transition-all hover:border-primary/30"
+              className="glass-card card-lift group flex flex-col justify-between rounded-xl p-4"
             >
               <button className="text-left" onClick={() => setSelectedId(d.id)}>
                 <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">

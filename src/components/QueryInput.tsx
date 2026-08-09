@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, AlertCircle, CornerDownLeft, Zap, SlidersHorizontal, Network, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useMagneticHover } from '@/hooks/useMagneticHover';
 import { getVisualizeSchema } from '../api/client';
 import { getSuggestions } from '../utils/autocomplete';
 import DatabaseSelector from './DatabaseSelector';
@@ -52,6 +53,7 @@ const QueryInput = ({
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const submitBtnRef = useMagneticHover<HTMLButtonElement>();
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -304,7 +306,13 @@ const QueryInput = ({
                 Stop
               </Button>
             ) : (
-              <Button id="submit-query-btn" type="submit" disabled={question.trim().length < 3} className="px-5">
+              <Button
+                ref={submitBtnRef}
+                id="submit-query-btn"
+                type="submit"
+                disabled={question.trim().length < 3}
+                className="px-5"
+              >
                 <Send className="h-4 w-4" />
                 Submit
               </Button>

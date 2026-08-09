@@ -2,7 +2,7 @@
 
 /* ───────────────────────────────────────────────────────────────────────────
    NL-to-SQL — "Precision data instrument" design system
-   Bold, modern, dark. Sora (display) · Hanken Grotesk (UI) · JetBrains Mono.
+   Bold, modern, dark. Space Grotesk (display) · Inter (UI) · JetBrains Mono.
    ─────────────────────────────────────────────────────────────────────────── */
 
 @custom-variant dark (&:is(.dark *));
@@ -96,8 +96,8 @@
   --color-violet-bg: var(--violet-bg);
   --color-violet-border: var(--violet-border);
 
-  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Sora", "Hanken Grotesk", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -252,6 +252,85 @@
   }
 
   .interactive { @apply cursor-pointer transition-colors duration-200; }
+
+  /* Holographic border — marks AI-generated content only (chat bubbles, SQL
+     panels). Animated emerald→teal→violet gradient ring painted as an inset
+     ::before using mask-composite, so it sits fully inside the box (never
+     clipped by the element's own overflow:hidden) and never fights the
+     element's own `background` in the cascade. */
+  .holo-border {
+    position: relative;
+    isolation: isolate;
+  }
+  .holo-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(120deg, rgba(16, 185, 129, 0.75), rgba(34, 211, 238, 0.7), rgba(139, 92, 246, 0.65));
+    background-size: 200% 200%;
+    animation: holoDrift 12s ease-in-out infinite;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Reveal-on-scroll (see useRevealOnScroll) */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-stagger > * {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-stagger.is-visible > * {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Ambient AI orb (see AiOrb.tsx) — signature "the model is here" object.
+     Used sparingly: Auth-page ambient decoration, chat "thinking" indicator. */
+  .ai-orb-scene { position: relative; pointer-events: none; }
+  .ai-orb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(34, 211, 238, 0.22);
+    animation: spin 22s linear infinite;
+  }
+  .ai-orb-ring.r2 {
+    inset: 14%;
+    border-color: rgba(16, 185, 129, 0.2);
+    animation-duration: 32s;
+    animation-direction: reverse;
+  }
+  .ai-orb-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 35% 30%, #34eea8 0%, var(--primary) 42%, #052018 75%, transparent 100%);
+    animation: orbBob 6s ease-in-out infinite;
+  }
+  .ai-orb-particle {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--chart-2);
+    opacity: 0.6;
+    filter: blur(0.5px);
+    animation: floatUp 5s linear infinite;
+  }
 }
 
 @utility animate-slide-up {
@@ -279,6 +358,8 @@
 @keyframes floatUp { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
 @keyframes pulseGlow { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
 @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes holoDrift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes orbBob { 0%,100% { transform: translate(-50%,-50%) translateY(0); } 50% { transform: translate(-50%,-50%) translateY(-10px); } }
 
 .auth-blob { position: absolute; border-radius: 50%; filter: blur(110px); opacity: 0.4; animation: blobFloat 13s ease-in-out infinite; pointer-events: none; }
 .auth-blob-1 { width: 560px; height: 560px; top: -16%; left: -10%; background: radial-gradient(circle, rgba(16,185,129,0.7), transparent 68%); animation-delay: 0s; }
@@ -291,6 +372,9 @@
   .auth-blob { animation: none; }
   .card-lift:hover { transform: none; }
   .card-lift { transition: box-shadow 0.2s ease; }
+  .holo-border::before { animation: none; }
+  .ai-orb-ring, .ai-orb-core, .ai-orb-particle { animation: none; }
+  .reveal, .reveal-stagger > * { opacity: 1; transform: none; transition: none; }
 }
 
 
