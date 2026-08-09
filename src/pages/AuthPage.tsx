@@ -185,9 +185,9 @@ const AuthPage = () => {
             <TerminalSquare className="h-6 w-6" strokeWidth={2.3} />
           </div>
           <div>
-            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">NL-to-SQL</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">Vectrix</h1>
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary/70">
-              Query in plain English
+              Where natural language meets your schema.
             </p>
           </div>
         </div>

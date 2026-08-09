@@ -50,7 +50,7 @@ const SharedQueryView = () => {
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex items-center gap-2">
           <TerminalSquare className="h-5 w-5 text-primary" />
-          <span className="font-display text-lg font-semibold">NL2SQL — Shared Query</span>
+          <span className="font-display text-lg font-semibold">Vectrix — Shared Query</span>
         </div>
 
         {loading && (
@@ -65,7 +65,7 @@ const SharedQueryView = () => {
             <div>
               <p>{error}</p>
               <Link to="/" className="mt-2 inline-block text-primary hover:underline">
-                Go to NL2SQL
+                Go to Vectrix
               </Link>
             </div>
           </div>

@@ -308,7 +308,7 @@ const Layout = () => {
     sessionsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const meta = pageMeta[location.pathname] ?? { title: 'NL-to-SQL', subtitle: 'Query in plain English' };
+  const meta = pageMeta[location.pathname] ?? { title: 'Vectrix', subtitle: 'Where natural language meets your schema.' };
 
   // Width: mobile open forces 288, collapsed forces 64, else variable
   const computedWidth = mobileOpen ? 288 : collapsed ? COLLAPSED_W : sidebarWidth;
@@ -348,8 +348,8 @@ const Layout = () => {
                   <TerminalSquare className="h-[18px] w-[18px]" strokeWidth={2.4} />
                 </div>
                 <div className="leading-tight">
-                  <p className="font-display text-[14px] font-bold tracking-tight text-foreground">NL-to-SQL</p>
-                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-primary/70">SQL Copilot</p>
+                  <p className="font-display text-[14px] font-bold tracking-tight text-foreground">Vectrix</p>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-primary/70">Where natural language meets your schema.</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">

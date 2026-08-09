@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "version": "1.0.0",
-  "description": "NL-to-SQL RAG Chatbot Frontend",
+  "description": "Vectrix — Where natural language meets your schema.",
   "type": "module",
   "scripts": {
     "dev": "vite",

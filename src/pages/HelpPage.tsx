@@ -528,7 +528,7 @@ export default function HelpPage() {
           <HelpCircle className="h-7 w-7 text-primary" />
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-gradient-hero">Help &amp; Documentation</h1>
-        <p className="mt-2 text-muted-foreground">Everything you need to get the most out of NL-to-SQL Copilot.</p>
+        <p className="mt-2 text-muted-foreground">Everything you need to get the most out of Vectrix.</p>
       </div>
 
       {/* Search */}

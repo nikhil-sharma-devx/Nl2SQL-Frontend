@@ -1,4 +1,6 @@
-# NL2SQL — Frontend
+# Vectrix — Frontend
+
+> Where natural language meets your schema.
 
 A production-grade chat interface that turns plain-English questions into SQL queries, live result tables, and automatic charts — no SQL knowledge required. Powered by a RAG-based backend, it understands your database schema and returns validated, executable SQL in seconds.
 
