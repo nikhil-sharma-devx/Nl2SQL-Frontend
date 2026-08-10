@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NL-to-SQL — 3D UI/UX Preview (Design Concept, Not Implemented)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   NL-to-SQL — Premium 3D UI/UX PREVIEW
+   Static mockup only. No build tools, no frameworks.
+   Companion doc: FRONTEND_3D_UI_UX_SPEC.md
+   ============================================================ */
+
+:root{
+  --bg-base:#05070A;
+  --bg-elevated:#0A0C11;
+  --surface-1:#11141B;
+  --surface-2:#161A22;
+  --glass:rgba(255,255,255,0.045);
+  --glass-strong:rgba(255,255,255,0.08);
+  --border:#232936;
+  --border-glow:rgba(16,185,129,0.4);
+  --text-1:#E4E9F1;
+  --text-2:#9AA4B2;
+  --text-3:#5B6472;
+  --emerald:#10B981;
+  --emerald-bright:#34EEA8;
+  --teal:#22D3EE;
+  --violet:#8B7CF6;
+  --success:#34D399;
+  --warning:#FBBF24;
+  --error:#FB7185;
+  --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px; --r-full:999px;
+  --shadow-1:0 1px 2px rgba(0,0,0,0.4);
+  --shadow-2:0 8px 24px -8px rgba(0,0,0,0.45);
+  --shadow-3:0 16px 48px -12px rgba(0,0,0,0.55);
+  --shadow-4:0 24px 80px -16px rgba(0,0,0,0.65);
+  --glow-sm:0 0 24px rgba(16,185,129,0.35),0 0 8px rgba(16,185,129,0.25);
+  --glow-lg:0 0 60px rgba(16,185,129,0.35),0 0 16px rgba(16,185,129,0.25);
+  --glow-ai:0 0 40px rgba(34,211,238,0.3);
+  --ease:cubic-bezier(0.22,1,0.36,1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg-base);
+  color:var(--text-1);
+  font-family:'Inter',system-ui,sans-serif;
+  overflow-x:hidden;
+  min-height:100vh;
+  position:relative;
+}
+h1,h2,h3,.display{font-family:'Space Grotesk',system-ui,sans-serif;letter-spacing:-0.015em;}
+code,.mono{font-family:'JetBrains Mono',monospace;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+::selection{background:rgba(16,185,129,0.35);}
+
+/* scrollbar */
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#232936;border-radius:99px;}
+
+/* focus-visible accessibility ring (never suppressed) */
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--emerald);
+  outline-offset:2px;
+  border-radius:var(--r-xs);
+}
+
+/* ---------- ambient background layers ---------- */
+.noise-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.mesh-bg{
+  position:fixed;inset:-10%;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(600px 600px at 15% 10%, rgba(16,185,129,0.14), transparent 60%),
+    radial-gradient(700px 700px at 85% 20%, rgba(34,211,238,0.10), transparent 60%),
+    radial-gradient(800px 800px at 50% 90%, rgba(139,124,246,0.08), transparent 60%),
+    var(--bg-base);
+  animation:meshDrift 70s ease-in-out infinite alternate;
+}
+@keyframes meshDrift{
+  0%{background-position:0 0,0 0,0 0;}
+  100%{background-position:40px 60px,-60px 30px,20px -40px;}
+}
+.cursor-spotlight{
+  position:fixed;top:0;left:0;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(16,185,129,0.10),transparent 70%);
+  transform:translate(-50%,-50%);pointer-events:none;z-index:2;
+  transition:opacity .3s ease;opacity:0;
+}
+
+/* ---------- glass / card primitives ---------- */
+.glass{
+  background:var(--glass);
+  backdrop-filter:blur(20px) saturate(140%);
+  -webkit-backdrop-filter:blur(20px) saturate(140%);
+  border:1px solid var(--glass-strong);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), var(--shadow-2);
+}
+.glass-strong{
+  background:var(--glass-strong);
+  backdrop-filter:blur(26px) saturate(160%);
+  -webkit-backdrop-filter:blur(26px) saturate(160%);
+  border:1px solid var(--border-glow);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-3);
+}
+.text-gradient{
+  background:linear-gradient(135deg,var(--emerald) 0%, var(--teal) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.holo-border{
+  position:relative;border:1px solid transparent;
+  background-clip:padding-box;
+}
+.holo-border::before{
+  content:'';position:absolute;inset:-1px;border-radius:inherit;z-index:-1;
+  background:linear-gradient(120deg, rgba(16,185,129,.65), rgba(34,211,238,.6), rgba(139,124,246,.55));
+  opacity:.55;
+}
+.card{
+  border-radius:var(--r-md);
+  padding:20px;
+  transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
+}
+.card.lift:hover{transform:translateY(-6px) scale(1.01);box-shadow:var(--shadow-3);border-color:var(--border-glow);}
+.icon-box{
+  width:38px;height:38px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#1b2029,#11141b);
+  border:1px solid var(--border);
+  color:var(--emerald);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+  transition:transform .4s var(--ease);
+}
+.card:hover .icon-box{transform:rotateY(10deg) translateZ(4px);}
+.icon-box svg{width:18px;height:18px;}
+
+/* buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:var(--r-sm);
+  font-size:14px;font-weight:600;transition:transform .2s var(--ease), box-shadow .2s var(--ease), background .2s;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--emerald),var(--teal));
+  color:#04140E;box-shadow:var(--glow-sm);
+}
+.btn-primary:hover{transform:scale(1.03);box-shadow:var(--glow-lg);}
+.btn-ghost{
+  background:var(--surface-2);border:1px solid var(--border);color:var(--text-1);
+}
+.btn-ghost:hover{border-color:var(--border-glow);background:var(--glass-strong);}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:var(--r-xs);}
+
+/* badges / pills */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--r-xs);letter-spacing:.02em;}
+.badge-emerald{background:rgba(16,185,129,0.14);color:var(--emerald-bright);border:1px solid rgba(16,185,129,0.3);}
+.badge-teal{background:rgba(34,211,238,0.12);color:var(--teal);border:1px solid rgba(34,211,238,0.28);}
+.badge-warn{background:rgba(251,191,36,0.12);color:var(--warning);border:1px solid rgba(251,191,36,0.28);}
+.badge-error{background:rgba(251,113,133,0.12);color:var(--error);border:1px solid rgba(251,113,133,0.28);}
+.badge-neutral{background:var(--surface-2);color:var(--text-2);border:1px solid var(--border);}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px rgba(16,185,129,.8);}
+
+/* layout helpers */
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px;}
+.grid{display:grid;gap:16px;}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+@media (max-width:900px){.grid-3,.grid-4{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:600px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+/* ---------- reveal-on-scroll ---------- */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s var(--ease),transform .7s var(--ease);}
+.reveal.is-visible{opacity:1;transform:translateY(0);}
+.reveal-stagger > *{opacity:0;transform:translateY(20px);transition:opacity .6s var(--ease),transform .6s var(--ease);}
+.reveal-stagger.is-visible > *{opacity:1;transform:translateY(0);}
+
+/* ---------- section chrome ---------- */
+.section-divider{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:56px 0;color:var(--text-3);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+}
+.section-divider::before,.section-divider::after{content:'';flex:1;max-width:220px;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+.page-label{
+  display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:28px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3);
+}
+.page-section{position:relative;z-index:3;padding:20px 24px 10px;}
+
+/* ---------- floating marketing nav ---------- */
+.floating-nav{
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:50;
+  display:flex;align-items:center;gap:28px;padding:10px 10px 10px 18px;border-radius:var(--r-full);
+  opacity:0;pointer-events:none;transition:opacity .4s var(--ease), transform .4s var(--ease);
+}
+.floating-nav.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+.floating-nav .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;}
+.floating-nav .orb-mark{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--emerald-bright),var(--emerald) 60%,#04140E);box-shadow:var(--glow-sm);}
+.floating-nav nav{display:flex;gap:20px;font-size:13px;color:var(--text-2);}
+.floating-nav nav a:hover{color:var(--text-1);}
+
+/* ---------- HERO ---------- */
+.hero{
+  position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:140px 24px 100px;overflow:hidden;
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:var(--r-full);
+  font-size:12px;color:var(--text-2);margin-bottom:28px;
+}
+.hero h1{
+  font-size:clamp(2.6rem,6vw,5.2rem);font-weight:700;line-height:1.05;max-width:900px;margin-bottom:22px;
+}
+.hero p.sub{max-width:560px;color:var(--text-2);font-size:18px;line-height:1.6;margin-bottom:36px;}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:80px;}
+.magnetic{will-change:transform;}
+
+.orb-scene{position:absolute;top:8%;left:50%;width:560px;height:560px;transform:translateX(-50%);z-index:0;pointer-events:none;}
+.orb-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:1px solid rgba(34,211,238,0.18);
+  animation:spin 26s linear infinite;
+}
+.orb-ring.r2{inset:40px;border-color:rgba(16,185,129,0.16);animation-duration:38s;animation-direction:reverse;}
+.orb-core{
+  position:absolute;left:50%;top:50%;width:220px;height:220px;transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--emerald-bright) 0%, var(--emerald) 42%, #052018 75%, transparent 100%);
+  box-shadow:0 0 120px 40px rgba(16,185,129,0.28), 0 0 220px 80px rgba(34,211,238,0.12);
+  animation:orbBob 7s ease-in-out infinite;
+}
+.particle{position:absolute;border-radius:50%;background:var(--teal);opacity:.6;filter:blur(0.5px);animation:floatUp linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes orbBob{0%,100%{transform:translate(-50%,-50%) translateY(0);}50%{transform:translate(-50%,-50%) translateY(-14px);}}
+@keyframes floatUp{0%{transform:translateY(0);opacity:0;}10%{opacity:.7;}90%{opacity:.4;}100%{transform:translateY(-420px);opacity:0;}}
+
+/* preview frame under hero */
+.hero-frame-wrap{perspective:1600px;width:min(1040px,92vw);}
+.device-frame{
+  border-radius:var(--r-xl);
+  transform:perspective(1400px) rotateX(4deg) rotateY(-6deg);
+  transition:transform .6s var(--ease);
+  box-shadow:var(--shadow-4);
+}
+.device-frame:hover{transform:perspective(1400px) rotateX(0deg) rotateY(0deg);}
+
+/* ---------- feature strip ---------- */
+.feature-strip{padding:20px 24px 40px;}
+.feature-card{position:relative;}
+.feature-card h3{font-size:17px;margin:14px 0 6px;}
+.feature-card p{font-size:13.5px;color:var(--text-2);line-height:1.55;}
+
+/* ---------- APP SHELL (reused across every in-app page mockup) ---------- */
+.app-shell{
+  display:flex;height:600px;border-radius:var(--r-xl);overflow:hidden;
+}
+.app-sidebar{
+  width:216px;flex-shrink:0;display:flex;flex-direction:column;
+  background:rgba(17,20,27,0.88);backdrop-filter:blur(24px);border-right:1px solid var(--border);
+}
+.app-sidebar .brand-row{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid rgba(35,41,54,.6);}
+.app-sidebar .brand-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--emerald),var(--emerald-bright));display:flex;align-items:center;justify-content:center;color:#04140E;box-shadow:var(--glow-sm);}
+.app-sidebar .brand-icon svg{width:16px;height:16px;}
+.app-sidebar .brand-text b{font-size:12.5px;display:block;font-family:'Space Grotesk';}
+.app-sidebar .brand-text span{font-size:8.5px;letter-spacing:.18em;color:var(--emerald);text-transform:uppercase;}
+.new-chat-pill{margin:12px;padding:9px 12px;border-radius:var(--r-sm);border:1px solid rgba(16,185,129,.3);background:linear-gradient(90deg,rgba(16,185,129,.18),rgba(16,185,129,.08));font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--text-1);}
+.sidebar-search{margin:0 12px 10px;position:relative;}
+.sidebar-search input{width:100%;background:rgba(10,12,17,.5);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 10px 7px 30px;font-size:11.5px;color:var(--text-2);}
+.sidebar-search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--text-3);}
+.sidebar-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3);padding:6px 20px 4px;}
+.nav-list{padding:0 8px;display:flex;flex-direction:column;gap:2px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-sm);font-size:12.5px;color:var(--text-2);position:relative;transition:background .2s,color .2s;}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;}
+.nav-item.active{background:rgba(255,255,255,0.05);color:var(--text-1);}
+.nav-item.active svg{color:var(--emerald);}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:16px;border-radius:0 4px 4px 0;background:linear-gradient(180deg,var(--emerald),var(--emerald-bright));box-shadow:var(--glow-sm);}
+.sidebar-spacer{flex:1;overflow:hidden;}
+.sidebar-foot{border-top:1px solid rgba(35,41,54,.6);padding:10px;}
+.profile-row{display:flex;align-items:center;gap:9px;padding:8px;border-radius:var(--r-sm);border:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--emerald),var(--emerald-bright));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#04140E;flex-shrink:0;}
+.profile-row .who b{display:block;font-size:11.5px;}
+.profile-row .who span{font-size:9.5px;color:var(--text-3);}
+
+.app-main{flex:1;display:flex;flex-direction:column;min-width:0;background:rgba(10,12,17,.55);}
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid rgba(35,41,54,.6);backdrop-filter:blur(20px);background:rgba(17,20,27,.4);}
+.app-header .title-block{display:flex;align-items:center;gap:12px;}
+.app-header .title-bar{width:5px;height:26px;border-radius:99px;background:linear-gradient(180deg,var(--emerald),var(--emerald-bright));box-shadow:var(--glow-sm);}
+.app-header h2{font-size:15px;font-weight:600;}
+.app-header .sub{font-size:11px;color:var(--text-3);}
+.header-right{display:flex;align-items:center;gap:12px;}
+.status-chip{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-3);font-family:'JetBrains Mono';}
+.kbd-search{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;font-size:11px;color:var(--text-3);}
+.kbd-search kbd{background:rgba(10,12,17,.6);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:9px;font-family:'JetBrains Mono';}
+.model-pill{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:var(--r-full);padding:5px 11px;font-size:11px;background:rgba(255,255,255,0.02);}
+.model-pill .dot{background:var(--teal);box-shadow:0 0 6px rgba(34,211,238,.8);}
+
+.app-content{flex:1;overflow-y:auto;padding:22px;}
+.app-content::-webkit-scrollbar{width:6px;}
+
+/* ---------- reusable content widgets ---------- */
+.stat-tile{padding:16px;border-radius:var(--r-md);}
+.stat-tile .lbl{font-size:10.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px;}
+.stat-tile .val{font-family:'Space Grotesk';font-size:24px;font-weight:700;}
+.stat-tile .delta{font-size:11px;margin-top:6px;}
+.up{color:var(--success);} .down{color:var(--error);}
+
+.list-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r-sm);border:1px solid transparent;transition:background .2s,border-color .2s;}
+.list-row:hover{background:rgba(255,255,255,0.03);border-color:var(--border);}
+.list-row .lr-icon{width:30px;height:30px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-2);flex-shrink:0;}
+.list-row .lr-icon svg{width:14px;height:14px;}
+.list-row .lr-title{font-size:12.5px;font-weight:500;}
+.list-row .lr-meta{font-size:10.5px;color:var(--text-3);}
+.list-row .lr-right{margin-left:auto;font-size:10.5px;color:var(--text-3);}
+
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;}
+.bars .bar{flex:1;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--teal),var(--emerald));opacity:.85;position:relative;}
+.spark{width:100%;height:70px;}
+.spark polyline{fill:none;stroke:var(--emerald);stroke-width:2;}
+.spark polygon{fill:url(#sparkFill);opacity:.25;}
+
+table.mock-table{width:100%;border-collapse:collapse;font-size:12px;}
+table.mock-table th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:8px 12px;border-bottom:1px solid var(--border);}
+table.mock-table td{padding:10px 12px;border-bottom:1px solid rgba(35,41,54,.5);color:var(--text-2);}
+table.mock-table tr:hover td{background:rgba(255,255,255,0.02);color:var(--text-1);}
+
+.chat-bubble{max-width:74%;padding:12px 14px;border-radius:var(--r-md);font-size:12.5px;line-height:1.55;}
+.chat-user{align-self:flex-end;background:var(--surface-2);border:1px solid var(--border);}
+.chat-ai{align-self:flex-start;background:rgba(16,185,129,0.06);border-radius:var(--r-md);}
+.sql-block{margin-top:10px;background:#0a0d13;border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-family:'JetBrains Mono';font-size:11.5px;color:#a7f3d0;overflow-x:auto;}
+.sql-kw{color:var(--teal);}
+.sql-str{color:#fbbf24;}
+
+.progress-track{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--emerald),var(--teal));box-shadow:var(--glow-sm);}
+
+.tabs-rail{display:flex;flex-direction:column;gap:2px;width:170px;flex-shrink:0;border-right:1px solid var(--border);padding-right:14px;}
+.tab-item{padding:8px 10px;border-radius:var(--r-sm);font-size:12px;color:var(--text-2);}
+.tab-item.active{background:rgba(255,255,255,0.05);color:var(--text-1);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;}
+.field .input-mock{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-size:12.5px;color:var(--text-1);}
+.field .input-mock:focus-within,.input-mock.focused{border-color:var(--border-glow);box-shadow:var(--glow-sm);}
+.toggle{width:36px;height:20px;border-radius:99px;background:var(--surface-2);border:1px solid var(--border);position:relative;flex-shrink:0;}
+.toggle.on{background:linear-gradient(90deg,rgba(16,185,129,.5),rgba(16,185,129,.3));border-color:rgba(16,185,129,.5);}
+.toggle .knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s;}
+.toggle.on .knob{left:18px;background:var(--emerald-bright);}
+
+/* ---------- Auth ---------- */
+.auth-shell{max-width:420px;margin:0 auto;padding:36px 32px;border-radius:var(--r-xl);}
+.auth-tabs{display:flex;gap:6px;background:var(--surface-2);border-radius:var(--r-sm);padding:4px;margin-bottom:24px;}
+.auth-tabs .t{flex:1;text-align:center;padding:8px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--text-3);}
+.auth-tabs .t.active{background:var(--surface-1);color:var(--text-1);box-shadow:var(--shadow-1);}
+
+/* ---------- Footer ---------- */
+.footer{padding:70px 24px 40px;border-top:1px solid var(--border);}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:50px;}
+.footer-grid h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:14px;}
+.footer-grid a{display:block;font-size:13px;color:var(--text-2);margin-bottom:10px;}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-3);flex-wrap:wrap;gap:12px;}
+@media (max-width:800px){.footer-grid{grid-template-columns:1fr 1fr;}}
+
+/* ---------- responsive: app shell collapses on small viewports ---------- */
+@media (max-width:860px){
+  .app-shell{height:auto;flex-direction:column;}
+  .app-sidebar{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);}
+  .app-sidebar .sidebar-spacer,.app-sidebar .brand-row .brand-text{display:none;}
+  .nav-list{flex-direction:row;}
+  .device-frame,.device-frame:hover{transform:none;}
+  .app-content{max-height:520px;}
+  .tabs-rail{display:none;}
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  .mesh-bg,.orb-ring,.orb-core,.particle{animation:none !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="mesh-bg"></div>
+<div class="noise-overlay"></div>
+<div class="cursor-spotlight" id="spotlight"></div>
+
+<header class="floating-nav glass-strong" id="floatingNav" style="border-radius:999px;">
+  <div class="brand"><span class="orb-mark"></span> NL-to-SQL</div>
+  <nav>
+    <a href="#hero">Product</a>
+    <a href="#page-query">Workspace</a>
+    <a href="#page-analytics">Analytics</a>
+    <a href="#page-auth">Sign in</a>
+  </nav>
+  <button class="btn btn-primary btn-sm">Get started</button>
+</header>
+
+<main>
+
+  <!-- ============================================================ HERO ============================================================ -->
+  <section class="hero" id="hero">
+    <div class="orb-scene" aria-hidden="true">
+      <div class="orb-ring"></div>
+      <div class="orb-ring r2"></div>
+      <div class="orb-core"></div>
+    </div>
+
+    <div class="hero-eyebrow glass" style="border-radius:999px;">
+      <span class="dot"></span> Design concept preview — not implemented in the live app
+    </div>
+    <h1 class="reveal">Ask your data anything.<br><span class="text-gradient">Get back SQL you can trust.</span></h1>
+    <p class="sub reveal">A premium, spatial redesign direction for NL-to-SQL — glass, depth and quiet motion built on top of the product's existing dark + emerald identity.</p>
+    <div class="hero-actions reveal">
+      <button class="btn btn-primary magnetic" id="ctaPrimary">Launch workspace →</button>
+      <button class="btn btn-ghost magnetic" id="ctaGhost">Watch a query run</button>
+    </div>
+
+    <div class="hero-frame-wrap reveal">
+      <div class="device-frame glass-strong">
+        <div class="app-shell" style="height:420px;">
+          <div class="app-sidebar" style="width:64px;">
+            <div class="brand-row" style="justify-content:center;padding:14px 0;border-bottom:1px solid rgba(35,41,54,.6);">
+              <div class="brand-icon"></div>
+            </div>
+            <div class="nav-list" style="align-items:center;padding-top:10px;" id="heroNavIcons"></div>
+          </div>
+          <div class="app-main">
+            <div class="app-header">
+              <div class="title-block"><span class="title-bar"></span><div><h2>Query Studio</h2><span class="sub">Ask your database in plain English</span></div></div>
+              <div class="header-right"><span class="status-chip"><span class="dot"></span>Connected</span></div>
+            </div>
+            <div class="app-content" style="display:flex;flex-direction:column;gap:12px;">
+              <div class="chat-bubble chat-user">Show me revenue by region for the last two quarters, sorted descending.</div>
+              <div class="chat-bubble chat-ai holo-border">
+                Here's the query — grouped by region, filtered to the last two fiscal quarters:
+                <div class="sql-block"><span class="sql-kw">SELECT</span> region, <span class="sql-kw">SUM</span>(revenue) <span class="sql-kw">AS</span> total_revenue
+<span class="sql-kw">FROM</span> orders
+<span class="sql-kw">WHERE</span> quarter <span class="sql-kw">IN</span> (<span class="sql-str">'2026-Q1'</span>, <span class="sql-str">'2026-Q2'</span>)
+<span class="sql-kw">GROUP BY</span> region
+<span class="sql-kw">ORDER BY</span> total_revenue <span class="sql-kw">DESC</span>;</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ FEATURE STRIP ============================================================ -->
+  <section class="feature-strip wrap">
+    <div class="grid grid-3 reveal-stagger" id="featureGrid"></div>
+  </section>
+
+  <div class="section-divider"><span>Every page, redesigned</span></div>
+
+  <!-- ============================================================ AUTH ============================================================ -->
+  <section class="page-section reveal" id="page-auth">
+    <div class="page-label"><span class="dot"></span> Page — Sign in / Create account</div>
+    <div class="orb-scene" style="position:relative;width:100%;height:0;top:auto;left:auto;transform:none;"></div>
+    <div class="auth-shell glass-strong">
+      <div style="text-align:center;margin-bottom:22px;">
+        <div class="brand-icon" style="width:44px;height:44px;border-radius:14px;margin:0 auto 14px;"></div>
+        <h3 style="font-size:19px;">Welcome back</h3>
+        <p style="font-size:12.5px;color:var(--text-3);margin-top:4px;">Sign in to your workspace</p>
+      </div>
+      <div class="auth-tabs">
+        <div class="t active">Sign in</div>
+        <div class="t">Create account</div>
+      </div>
+      <div class="field"><label>Email</label><div class="input-mock focused">alex@company.com</div></div>
+      <div class="field"><label>Password</label><div class="input-mock">••••••••••••</div></div>
+      <button class="btn btn-primary magnetic" style="width:100%;justify-content:center;margin-bottom:12px;">Sign in →</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;">Continue with Google</button>
+      <p style="text-align:center;font-size:11px;color:var(--text-3);margin-top:16px;">Protected by short-lived tokens &amp; per-workspace isolation.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ APP PAGES (JS-rendered shell, static content) ============================================================ -->
+  <div id="pagesRoot"></div>
+
+  <div class="section-divider"><span>Consistent chrome. Composable content.</span></div>
+
+  <!-- ============================================================ FOOTER ============================================================ -->
+  <footer class="footer wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:12px;"><span class="orb-mark"></span><b>NL-to-SQL</b></div>
+        <p style="font-size:13px;color:var(--text-3);max-width:280px;line-height:1.6;">A design concept preview. This file changes nothing in the running application.</p>
+      </div>
+      <div><h4>Product</h4><a>Query Studio</a><a>Schema</a><a>Dashboards</a><a>Metrics Catalog</a></div>
+      <div><h4>Resources</h4><a>Documentation</a><a>Templates</a><a>Training</a><a>Help &amp; shortcuts</a></div>
+      <div><h4>Company</h4><a>Security</a><a>Status</a><a>Changelog</a></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 NL-to-SQL — Design preview, not production UI.</span>
+      <span class="mono">FRONTEND_3D_UI_UX_SPEC.md</span>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+/* ============================================================
+   Vanilla JS — used only to (a) render the repeated app-shell
+   chrome consistently across every page mockup below, and
+   (b) drive animation/interaction (scroll reveal, parallax,
+   magnetic buttons, cursor spotlight). No framework, no build
+   step — everything here is static markup + DOM strings.
+   ============================================================ */
+
+const ICONS = {
+  home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/>',
+  query:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 10h8M8 14h5"/>',
+  schema:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
+  history:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>',
+  analytics:'<path d="M4 20V10M11 20V4M18 20v-7"/>',
+  saved:'<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1Z"/>',
+  dashboards:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  schedules:'<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><circle cx="15.5" cy="15" r="2.4"/><path d="M15.5 13.8V15l1 .7"/>',
+  metrics:'<path d="M12 3.3 19 6v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-2.7Z"/><path d="M9 12l2 2 4-4.2"/>',
+  templates:'<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M14 3.5V8h4"/><path d="M9 13.2l1.8 1.8L9 16.8M13.2 13l3.8 1.9-3.8 1.9"/>',
+  training:'<path d="M12 3a4 4 0 0 0-4 4v1a3 3 0 0 0-1 5.8V17a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-3.2A3 3 0 0 0 16 8V7a4 4 0 0 0-4-4Z"/><path d="M9 11h6M9 14h6"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/>',
+  new:'<path d="M12 5v14M5 12h14"/>',
+  chevron:'<path d="M9 6l6 6-6 6"/>',
+  bell:'<path d="M6 9a6 6 0 1 1 12 0v4l1.5 3h-15L6 13Z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M19 4l2 2"/>',
+  shield:'<path d="M12 3l7 3v6c0 5-3 7.5-7 9-4-1.5-7-4-7-9V6Z"/><path d="M9 12l2 2 4-4"/>',
+  sliders:'<path d="M4 6h9M17 6h3M4 12h3M9 12h11M4 18h13M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  book:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H12v18H5.5A1.5 1.5 0 0 1 4 19.5Z"/><path d="M20 4.5A1.5 1.5 0 0 0 18.5 3H12v18h6.5a1.5 1.5 0 0 0 1.5-1.5Z"/>',
+  palette:'<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10.5" r="1.2"/><circle cx="12" cy="8" r="1.2"/><circle cx="15.5" cy="10.5" r="1.2"/><path d="M9 15.5a3 3 0 0 0 6 0"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.2 1-1.2 1.8"/><path d="M12 17.2v.1"/>',
+  play:'<path d="M6 4.5v15l14-7.5Z"/>',
+  send:'<path d="M4 12l16-8-6 16-2.5-6.5Z"/>',
+};
+function icon(name,size=1){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${1.8/size}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;}
+
+const NAV = [
+  {key:'home',label:'Home',icon:'home'},
+  {key:'query',label:'Query',icon:'query'},
+  {key:'schema',label:'Schema',icon:'schema'},
+  {key:'history',label:'History',icon:'history'},
+  {key:'analytics',label:'Analytics',icon:'analytics'},
+  {key:'saved',label:'Saved',icon:'saved'},
+  {key:'dashboards',label:'Dashboards',icon:'dashboards'},
+  {key:'schedules',label:'Schedules',icon:'schedules'},
+  {key:'metrics',label:'Metrics',icon:'metrics'},
+  {key:'templates',label:'Templates',icon:'templates'},
+  {key:'training',label:'Training',icon:'training'},
+];
+
+document.getElementById('heroNavIcons').innerHTML = NAV.slice(0,6).map(n=>`<div class="nav-item${n.key==='query'?' active':''}" style="width:34px;height:34px;justify-content:center;padding:0;">${icon(n.icon)}</div>`).join('');
+
+function sidebar(activeKey){
+  return `
+  <aside class="app-sidebar">
+    <div class="brand-row">
+      <div class="brand-icon">${icon('query')}</div>
+      <div class="brand-text"><b>NL-to-SQL</b><span>SQL Copilot</span></div>
+    </div>
+    <div class="new-chat-pill">${icon('new')} New chat</div>
+    <div class="sidebar-search">${icon('search')}<input placeholder="Search chats…" disabled></div>
+    <div class="sidebar-label">Workspace</div>
+    <div class="nav-list">
+      ${NAV.map(n=>`<div class="nav-item${n.key===activeKey?' active':''}">${icon(n.icon)}<span>${n.label}</span></div>`).join('')}
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-foot">
+      <div class="profile-row">
+        <div class="avatar">A</div>
+        <div class="who"><b>Alex Rivera</b><span>alex@company.com</span></div>
+      </div>
+    </div>
+  </aside>`;
+}
+
+function header(title,sub){
+  return `
+  <div class="app-header">
+    <div class="title-block"><span class="title-bar"></span><div><h2>${title}</h2><span class="sub">${sub}</span></div></div>
+    <div class="header-right">
+      <div class="kbd-search">${icon('search')} Search <kbd>Ctrl K</kbd></div>
+      <span class="status-chip"><span class="dot"></span>Connected</span>
+      <div class="model-pill"><span class="dot"></span>GPT-5</div>
+    </div>
+  </div>`;
+}
+
+function frame(pageKey,label,title,sub,contentHtml,tall){
+  return `
+  <section class="page-section reveal" id="page-${pageKey}">
+    <div class="page-label"><span class="dot"></span> Page — ${label}</div>
+    <div class="device-frame glass-strong">
+      <div class="app-shell" style="${tall?'height:660px;':''}">
+        ${sidebar(pageKey)}
+        <div class="app-main">
+          ${header(title,sub)}
+          <div class="app-content">${contentHtml}</div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* ---------- small content-builder helpers ---------- */
+const statTile = (lbl,val,delta,up)=>`
+  <div class="glass card stat-tile">
+    <div class="lbl">${lbl}</div>
+    <div class="val">${val}</div>
+    <div class="delta ${up?'up':'down'}">${up?'▲':'▼'} ${delta}</div>
+  </div>`;
+
+const listRow = (ic,title,meta,right)=>`
+  <div class="list-row">
+    <div class="lr-icon">${icon(ic)}</div>
+    <div><div class="lr-title">${title}</div><div class="lr-meta">${meta}</div></div>
+    <div class="lr-right">${right}</div>
+  </div>`;
+
+const bars = (vals)=>`<div class="bars">${vals.map(v=>`<div class="bar" style="height:${v}%"></div>`).join('')}</div>`;
+
+const sparkline = (pts)=>{
+  const w=280,h=70;
+  const step=w/(pts.length-1);
+  const norm=pts.map((p,i)=>`${(i*step).toFixed(1)},${(h-(p/100*h)).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#10b981" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="0,${h} ${norm} ${w},${h}"/>
+    <polyline points="${norm}"/>
+  </svg>`;
+};
+
+/* ---------- PAGE CONTENT ---------- */
+const PAGES = [];
+
+// HOME ---------------------------------------------------------------
+PAGES.push(frame('home','Home','Home','Your workspace at a glance', `
+  <h3 style="font-size:20px;margin-bottom:4px;">Good evening, <span class="text-gradient">Alex</span></h3>
+  <p style="color:var(--text-3);font-size:12.5px;margin-bottom:20px;">3 connections synced · last query 12 minutes ago</p>
+  <div class="grid grid-3" style="margin-bottom:22px;">
+    ${statTile('Queries this week','182','12% vs last week',true)}
+    ${statTile('Avg. response time','1.4s','0.3s faster',true)}
+    ${statTile('SQL accuracy','98.2%','steady',true)}
+  </div>
+  <div class="grid grid-2">
+    <div class="glass card">
+      <h4 style="font-size:13px;margin-bottom:10px;color:var(--text-2);">Quick actions</h4>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${listRow('new','Start a new query','Query Studio','↵')}
+        ${listRow('schema','Connect a database','Schema','↵')}
+        ${listRow('dashboards','Open dashboard','Auto-charted views','↵')}
+      </div>
+    </div>
+    <div class="glass card">
+      <h4 style="font-size:13px;margin-bottom:10px;color:var(--text-2);">Recent activity</h4>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${listRow('history','"Top 10 customers by LTV"','Query Studio','2h ago')}
+        ${listRow('saved','Bookmarked "Monthly churn"','Saved Queries','5h ago')}
+        ${listRow('schedules','"Weekly revenue digest" ran','Schedules','1d ago')}
+      </div>
+    </div>
+  </div>
+`));
+
+// QUERY STUDIO ---------------------------------------------------------
+PAGES.push(frame('query','Query Studio','Query Studio','Ask your database in plain English', `
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:720px;">
+    <div class="chat-bubble chat-user">Which products had the biggest month-over-month growth in Q2?</div>
+    <div class="chat-bubble chat-ai holo-border">
+      Top 5 products by MoM growth in Q2 — here's the query and the result:
+      <div class="sql-block"><span class="sql-kw">SELECT</span> product_name, growth_pct
+<span class="sql-kw">FROM</span> product_growth
+<span class="sql-kw">WHERE</span> quarter <span class="sql-kw">=</span> <span class="sql-str">'2026-Q2'</span>
+<span class="sql-kw">ORDER BY</span> growth_pct <span class="sql-kw">DESC</span> <span class="sql-kw">LIMIT</span> 5;</div>
+      <table class="mock-table" style="margin-top:10px;">
+        <tr><th>Product</th><th>Growth</th></tr>
+        <tr><td>Aurora Desk Lamp</td><td class="up">+38.4%</td></tr>
+        <tr><td>Nimbus Chair</td><td class="up">+29.1%</td></tr>
+        <tr><td>Solace Rug</td><td class="up">+21.7%</td></tr>
+      </table>
+    </div>
+  </div>
+  <div style="margin-top:18px;display:flex;gap:10px;align-items:center;" class="glass" >
+    <div style="flex:1;padding:12px 16px;color:var(--text-3);font-size:13px;">Ask anything about your data…</div>
+    <button class="btn btn-primary btn-sm magnetic" style="margin:6px;">${icon('send')} Send</button>
+  </div>
+`,true));
+
+// SCHEMA ---------------------------------------------------------------
+PAGES.push(frame('schema','Schema','Schema','Connections, ingestion & live sync', `
+  <div class="grid grid-3" style="margin-bottom:20px;">
+    <div class="glass card lift"><span class="badge badge-emerald">Synced</span><h4 style="margin-top:10px;font-size:14px;">Production Postgres</h4><p style="font-size:11.5px;color:var(--text-3);margin-top:4px;">42 tables · synced 3m ago</p></div>
+    <div class="glass card lift"><span class="badge badge-teal">Syncing…</span><h4 style="margin-top:10px;font-size:14px;">Snowflake Warehouse</h4><p style="font-size:11.5px;color:var(--text-3);margin-top:4px;">118 tables · in progress</p></div>
+    <div class="glass card lift"><span class="badge badge-neutral">Idle</span><h4 style="margin-top:10px;font-size:14px;">BigQuery Analytics</h4><p style="font-size:11.5px;color:var(--text-3);margin-top:4px;">27 tables · synced 1d ago</p></div>
+  </div>
+  <div class="glass card" style="height:220px;position:relative;overflow:hidden;">
+    <h4 style="font-size:13px;color:var(--text-2);margin-bottom:10px;">Schema graph — production.orders</h4>
+    <svg width="100%" height="150" viewBox="0 0 600 150">
+      <g stroke="#232936" stroke-width="1.5">
+        <line x1="80" y1="30" x2="260" y2="70"/><line x1="260" y1="70" x2="450" y2="30"/>
+        <line x1="260" y1="70" x2="260" y2="130"/><line x1="260" y1="70" x2="450" y2="120"/>
+      </g>
+      <g>
+        <circle cx="80" cy="30" r="8" fill="#10b981"/><text x="98" y="34" fill="#9AA4B2" font-size="11">customers</text>
+        <circle cx="260" cy="70" r="10" fill="#22d3ee"/><text x="278" y="74" fill="#e4e9f1" font-size="12">orders</text>
+        <circle cx="450" cy="30" r="8" fill="#10b981"/><text x="468" y="34" fill="#9AA4B2" font-size="11">products</text>
+        <circle cx="260" cy="130" r="8" fill="#10b981"/><text x="278" y="134" fill="#9AA4B2" font-size="11">payments</text>
+        <circle cx="450" cy="120" r="8" fill="#10b981"/><text x="468" y="124" fill="#9AA4B2" font-size="11">shipments</text>
+      </g>
+    </svg>
+  </div>
+`,true));
+
+// HISTORY ---------------------------------------------------------------
+PAGES.push(frame('history','History','History','Past sessions & conversations', `
+  <div class="sidebar-label" style="padding-left:2px;">Today</div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+    ${listRow('query','Top 10 customers by lifetime value','Query Studio · 18 messages','2:41 PM')}
+    ${listRow('query','Refunds trending up in APAC?','Query Studio · 6 messages','11:05 AM')}
+  </div>
+  <div class="sidebar-label" style="padding-left:2px;">Yesterday</div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+    ${listRow('query','Cohort retention for signups in March','Query Studio · 9 messages','4:12 PM')}
+  </div>
+  <div class="sidebar-label" style="padding-left:2px;">Previous 7 days</div>
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    ${listRow('query','Warehouse capacity by region','Query Studio · 3 messages','Mon')}
+    ${listRow('query','Draft schema for new events table','Query Studio · 14 messages','Sun')}
+  </div>
+`));
+
+// ANALYTICS ---------------------------------------------------------------
+PAGES.push(frame('analytics','Analytics','Analytics','Usage, accuracy & performance', `
+  <div class="grid grid-4" style="margin-bottom:20px;">
+    ${statTile('Total queries','4,821','8% ↑ this month',true)}
+    ${statTile('Avg latency','1.2s','0.1s faster',true)}
+    ${statTile('Error rate','0.6%','0.2% ↓',true)}
+    ${statTile('Active users','37','5 new',true)}
+  </div>
+  <div class="grid grid-2">
+    <div class="glass card"><h4 style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Queries per day</h4>${bars([40,55,35,70,60,90,75])}</div>
+    <div class="glass card"><h4 style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Accuracy trend</h4>${sparkline([70,74,78,76,84,88,92,90,96])}</div>
+  </div>
+`));
+
+// SAVED QUERIES ---------------------------------------------------------------
+PAGES.push(frame('saved','Saved Queries','Saved Queries','Your bookmarked SQL queries', `
+  <div class="grid grid-3">
+    ${['Monthly churn by plan','Top 20 customers by LTV','Inventory below reorder point'].map((t,i)=>`
+      <div class="glass card lift">
+        <div style="display:flex;justify-content:space-between;"><span class="badge badge-emerald">Saved</span><span style="color:var(--text-3);font-size:10.5px;">${['3d ago','1w ago','2w ago'][i]}</span></div>
+        <h4 style="font-size:13.5px;margin:10px 0 6px;">${t}</h4>
+        <div class="sql-block" style="font-size:10.5px;">${icon('query',1.4)} <span class="sql-kw">SELECT</span> … <span class="sql-kw">FROM</span> …</div>
+      </div>`).join('')}
+  </div>
+`));
+
+// DASHBOARDS ---------------------------------------------------------------
+PAGES.push(frame('dashboards','Dashboards','Dashboards','Auto-charted views of your data', `
+  <div class="grid grid-2">
+    <div class="glass card"><h4 style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Revenue by region</h4>${bars([50,80,35,65])}</div>
+    <div class="glass card"><h4 style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Signups (30d)</h4>${sparkline([30,45,40,60,55,72,80])}</div>
+    <div class="glass card"><h4 style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Support tickets</h4>${bars([60,40,45,30,55])}</div>
+    <div class="glass card"><h4 style="font-size:13px;color:var(--text-2);margin-bottom:12px;">Churned MRR</h4>${sparkline([20,25,22,30,18,15,12])}</div>
+  </div>
+`));
+
+// SCHEDULES ---------------------------------------------------------------
+PAGES.push(frame('schedules','Scheduled Queries','Scheduled Queries','Recurring questions with email alerts', `
+  <table class="mock-table">
+    <tr><th>Name</th><th>Cron</th><th>Next run</th><th>Status</th><th>Recipients</th></tr>
+    <tr><td>Weekly revenue digest</td><td class="mono">0 9 * * MON</td><td>Mon, 9:00 AM</td><td><span class="badge badge-emerald">Active</span></td><td>4 people</td></tr>
+    <tr><td>Daily anomaly check</td><td class="mono">0 7 * * *</td><td>Tomorrow, 7:00 AM</td><td><span class="badge badge-emerald">Active</span></td><td>2 people</td></tr>
+    <tr><td>Monthly cohort report</td><td class="mono">0 8 1 * *</td><td>Sep 1, 8:00 AM</td><td><span class="badge badge-warn">Paused</span></td><td>6 people</td></tr>
+  </table>
+`));
+
+// METRICS CATALOG ---------------------------------------------------------------
+PAGES.push(frame('metrics','Metrics Catalog','Metrics Catalog','Governed business metrics for this connection', `
+  <div class="grid grid-3">
+    ${[['Net Revenue','SUM(amount) - SUM(refunds)','Finance'],['Active Users (30d)','COUNT(DISTINCT user_id)','Growth'],['Gross Margin','(revenue - cogs) / revenue','Finance']].map(([t,f,o])=>`
+      <div class="glass card lift">
+        <span class="badge badge-teal">${icon('metrics',1.6)} Certified</span>
+        <h4 style="font-size:13.5px;margin:10px 0 4px;">${t}</h4>
+        <div class="sql-block" style="font-size:10.5px;">${f}</div>
+        <p style="font-size:10.5px;color:var(--text-3);margin-top:8px;">Owner: ${o}</p>
+      </div>`).join('')}
+  </div>
+`));
+
+// TEMPLATES ---------------------------------------------------------------
+PAGES.push(frame('templates','Query Templates','Query Templates','Parameterized SQL patterns', `
+  <div class="grid grid-2">
+    ${[['Revenue by <span class="text-gradient">{{period}}</span>','Fill in a date range to get grouped revenue.'],['Top <span class="text-gradient">{{n}}</span> customers by <span class="text-gradient">{{metric}}</span>','Rank customers by any numeric metric.']].map(([t,d])=>`
+      <div class="glass card lift">
+        <div class="icon-box" style="margin-bottom:12px;">${icon('templates')}</div>
+        <h4 style="font-size:14px;margin-bottom:6px;">${t}</h4>
+        <p style="font-size:12px;color:var(--text-3);line-height:1.5;">${d}</p>
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px;">Use template</button>
+      </div>`).join('')}
+  </div>
+`));
+
+// TRAINING ---------------------------------------------------------------
+PAGES.push(frame('training','Model Training','Model Training','Fine-tune on your query history', `
+  <div class="grid grid-3" style="margin-bottom:18px;">
+    ${statTile('Training examples','1,204','142 new this week',true)}
+    ${statTile('Corrections applied','86','12 pending review',true)}
+    ${statTile('Model version','v0.14','deployed 2d ago',true)}
+  </div>
+  <div class="glass card">
+    <h4 style="font-size:13px;color:var(--text-2);margin-bottom:10px;">Current training run</h4>
+    <div class="progress-track" style="margin-bottom:8px;"><div class="progress-fill" style="width:64%;"></div></div>
+    <p style="font-size:11px;color:var(--text-3);">64% complete — estimated 8 minutes remaining</p>
+  </div>
+`));
+
+// HELP ---------------------------------------------------------------
+PAGES.push(frame('help','Help','Help','Documentation, shortcuts & FAQ', `
+  <div class="grid grid-2" style="margin-bottom:18px;">
+    <div class="glass card"><h4 style="font-size:13px;margin-bottom:6px;">${icon('help',1.6)} How do I connect a new database?</h4><p style="font-size:12px;color:var(--text-3);">Head to Schema → Add connection, then paste a connection string or pick a managed provider.</p></div>
+    <div class="glass card"><h4 style="font-size:13px;margin-bottom:6px;">${icon('help',1.6)} Can I correct a wrong SQL answer?</h4><p style="font-size:12px;color:var(--text-3);">Yes — use the feedback panel under any AI response to submit a correction for training.</p></div>
+  </div>
+  <div class="glass card">
+    <h4 style="font-size:13px;color:var(--text-2);margin-bottom:10px;">Keyboard shortcuts</h4>
+    <div class="grid grid-3">
+      ${[['Ctrl K','Command palette'],['Alt N','New chat'],['Ctrl /','Toggle sidebar']].map(([k,l])=>`<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-3);">${l}</span><kbd class="mono" style="background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;">${k}</kbd></div>`).join('')}
+    </div>
+  </div>
+`));
+
+// SETTINGS ---------------------------------------------------------------
+PAGES.push(frame('settings','Settings','Preferences, security & data', `
+  <div style="display:flex;gap:22px;">
+    <div class="tabs-rail">
+      ${['General','Appearance','Instructions','SQL Style','RAG','Notifications','Glossary','Data & Privacy','Security'].map((t,i)=>`<div class="tab-item${i===1?' active':''}">${t}</div>`).join('')}
+    </div>
+    <div style="flex:1;">
+      <h4 style="font-size:14px;margin-bottom:14px;">Appearance</h4>
+      <div class="field"><label>Theme</label><div class="input-mock" style="display:flex;gap:6px;">${icon('palette',1.4)} Dark (Emerald)</div></div>
+      <div class="field"><label>Font size</label><div class="input-mock">Comfortable</div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);">
+        <div><div style="font-size:12.5px;">Reduce motion</div><div style="font-size:10.5px;color:var(--text-3);">Disable ambient/parallax effects</div></div>
+        <div class="toggle"><div class="knob"></div></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);">
+        <div><div style="font-size:12.5px;">Compact density</div><div style="font-size:10.5px;color:var(--text-3);">Tighter spacing across tables &amp; lists</div></div>
+        <div class="toggle on"><div class="knob"></div></div>
+      </div>
+    </div>
+  </div>
+`,true));
+
+// PROFILE & USAGE ---------------------------------------------------------------
+PAGES.push(frame('profile','Profile & Usage','Profile & Usage','API keys, plan & consumption', `
+  <div class="grid grid-2">
+    <div class="glass card">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;">A</div>
+        <div><div style="font-weight:600;font-size:14px;">Alex Rivera</div><div style="font-size:11.5px;color:var(--text-3);">alex@company.com</div></div>
+      </div>
+      <div class="field"><label>Anthropic API key</label><div class="input-mock" style="display:flex;gap:6px;">${icon('key',1.4)} sk-ant-••••••••7f2a</div></div>
+      <div class="field"><label>OpenAI API key</label><div class="input-mock" style="display:flex;gap:6px;">${icon('key',1.4)} Not connected</div></div>
+      <span class="badge badge-emerald">${icon('shield',1.6)} 2FA enabled</span>
+    </div>
+    <div class="glass card">
+      <h4 style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Monthly usage</h4>
+      <div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;"><span>Queries</span><span class="mono">3,412 / 5,000</span></div><div class="progress-track"><div class="progress-fill" style="width:68%;"></div></div></div>
+      <div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;"><span>Storage</span><span class="mono">1.2GB / 10GB</span></div><div class="progress-track"><div class="progress-fill" style="width:12%;"></div></div></div>
+      <span class="badge badge-teal">Pro plan</span>
+    </div>
+  </div>
+`));
+
+document.getElementById('pagesRoot').innerHTML = PAGES.join('');
+
+// ---------------------------------------------------------------------------
+// FEATURE STRIP (marketing cards) — rendered after page defs so icon() exists
+// ---------------------------------------------------------------------------
+const FEATURES = [
+  ['schema','Connect anything','Postgres, Snowflake, BigQuery and more — synced schemas, live status, zero config drift.'],
+  ['query','Ask in plain English','Every question becomes reviewable, correctable SQL — never a black box.'],
+  ['metrics','Governed metrics','Certified definitions keep every dashboard and answer speaking the same language.'],
+];
+document.getElementById('featureGrid').innerHTML = FEATURES.map(([ic,t,d])=>`
+  <div class="glass card lift feature-card">
+    <div class="icon-box">${icon(ic)}</div>
+    <h3>${t}</h3><p>${d}</p>
+  </div>`).join('');
+
+/* ---------------------------------------------------------------------------
+   Animation & interaction
+--------------------------------------------------------------------------- */
+
+// Ambient particles in hero orb
+(function particles(){
+  const scene = document.querySelector('.orb-scene');
+  if(!scene) return;
+  for(let i=0;i<16;i++){
+    const p = document.createElement('div');
+    const size = 2+Math.random()*3;
+    p.className='particle';
+    p.style.width=p.style.height=size+'px';
+    p.style.left=(20+Math.random()*60)+'%';
+    p.style.top=(40+Math.random()*40)+'%';
+    p.style.animationDuration=(6+Math.random()*8)+'s';
+    p.style.animationDelay=(Math.random()*6)+'s';
+    scene.appendChild(p);
+  }
+})();
+
+// Scroll reveal
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(reduceMotion){
+  document.querySelectorAll('.reveal,.reveal-stagger').forEach(el=>el.classList.add('is-visible'));
+} else {
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('is-visible'); io.unobserve(e.target); } });
+  },{threshold:0.15});
+  document.querySelectorAll('.reveal,.reveal-stagger').forEach(el=>io.observe(el));
+}
+
+// Floating nav — show after scrolling past hero
+window.addEventListener('scroll',()=>{
+  document.getElementById('floatingNav').classList.toggle('show', window.scrollY>80);
+});
+
+// Cursor spotlight (desktop, non-touch, motion allowed)
+if(!reduceMotion && window.matchMedia('(pointer: fine)').matches){
+  const spot = document.getElementById('spotlight');
+  window.addEventListener('mousemove',(e)=>{
+    spot.style.opacity = 1;
+    spot.style.left = e.clientX+'px';
+    spot.style.top = e.clientY+'px';
+  });
+  document.addEventListener('mouseleave',()=>{ spot.style.opacity = 0; });
+}
+
+// Magnetic buttons
+if(!reduceMotion){
+  document.querySelectorAll('.magnetic').forEach(btn=>{
+    btn.addEventListener('mousemove',(e)=>{
+      const r = btn.getBoundingClientRect();
+      const dx = (e.clientX - (r.left+r.width/2))*0.18;
+      const dy = (e.clientY - (r.top+r.height/2))*0.18;
+      btn.style.transform = `translate(${Math.max(-6,Math.min(6,dx))}px, ${Math.max(-6,Math.min(6,dy))}px)`;
+    });
+    btn.addEventListener('mouseleave',()=>{ btn.style.transform=''; });
+  });
+
+  // Parallax on hero orb relative to pointer
+  const orb = document.querySelector('.orb-scene');
+  window.addEventListener('mousemove',(e)=>{
+    if(!orb) return;
+    const x = (e.clientX/window.innerWidth - 0.5)*20;
+    const y = (e.clientY/window.innerHeight - 0.5)*20;
+    orb.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${y}px)`;
+  });
+}
+</script>
+</body>
+</html>
