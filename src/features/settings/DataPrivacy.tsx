@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Separator } from '../../components/ui/separator';
 import ConfirmDestructive from '../../components/ConfirmDestructive';
 import InfoTip from '../../components/InfoTip';
+import { FormMessage } from '../../components/ui/form-message';
 
 type Retention = 'forever' | '30d' | '7d' | 'none';
 
@@ -136,8 +137,8 @@ export default function DataPrivacySettings() {
           Soft-deletes all query history. Data is recoverable within 30 days.
         </p>
         {clearResult && <p className="text-xs text-primary">{clearResult}</p>}
-        {clearError && <p className="text-xs text-destructive">{clearError}</p>}
-        <Button variant="outline" size="sm" onClick={() => { setClearError(null); setClearResult(null); setClearOpen(true); }}>
+        <FormMessage>{clearError}</FormMessage>
+        <Button variant="destructive-ghost" size="sm" onClick={() => { setClearError(null); setClearResult(null); setClearOpen(true); }}>
           Clear All History
         </Button>
         <ConfirmDestructive
@@ -170,7 +171,7 @@ export default function DataPrivacySettings() {
             {exportRequestMutation.isPending ? 'Requesting…' : 'Request Data Export'}
           </Button>
         )}
-        {exportError && <p className="text-xs text-destructive">{exportError}</p>}
+        <FormMessage>{exportError}</FormMessage>
         {exportStatus && (
           <p className="text-xs text-muted-foreground">
             Status: <span className="font-medium text-foreground">{exportStatus.status}</span>
@@ -225,7 +226,7 @@ export default function DataPrivacySettings() {
             </button>
           ))}
         </div>
-        {retentionError && <p className="text-xs text-destructive">{retentionError}</p>}
+        <FormMessage>{retentionError}</FormMessage>
         {retentionMutation.isSuccess && <p className="text-xs text-primary">Retention setting saved.</p>}
       </section>
 
@@ -237,8 +238,8 @@ export default function DataPrivacySettings() {
         <p className="text-xs text-muted-foreground">
           Permanently deletes your account and all data after a 7-day grace period. This cannot be undone.
         </p>
-        {deleteError && <p className="text-xs text-destructive">{deleteError}</p>}
-        <Button variant="destructive" size="sm" onClick={() => { setDeleteError(null); setDeleteOpen(true); }}>
+        <FormMessage>{deleteError}</FormMessage>
+        <Button variant="destructive-ghost" size="sm" onClick={() => { setDeleteError(null); setDeleteOpen(true); }}>
           Delete Account
         </Button>
         <ConfirmDestructive

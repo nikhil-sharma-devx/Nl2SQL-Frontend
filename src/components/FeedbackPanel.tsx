@@ -148,6 +148,7 @@ const FeedbackPanel = ({ question, generatedSql, onSubmit, onCorrection }: Feedb
             </div>
             <button
               onClick={() => { setShowCorrection(false); setCorrectionText(''); }}
+              aria-label="Cancel correction"
               className="text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="h-4 w-4" />
@@ -185,7 +186,11 @@ const FeedbackPanel = ({ question, generatedSql, onSubmit, onCorrection }: Feedb
               <AlertTriangle className="h-4 w-4 text-destructive-text" />
               <span className="text-sm font-semibold text-destructive-text">Report Error</span>
             </div>
-            <button onClick={() => setShowErrorReport(false)} className="text-muted-foreground transition-colors hover:text-foreground">
+            <button
+              onClick={() => setShowErrorReport(false)}
+              aria-label="Cancel error report"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>

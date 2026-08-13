@@ -57,6 +57,8 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useMagneticHover } from '@/hooks/useMagneticHover';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 
 interface SavedQueryLite {
   id: number;
@@ -99,6 +101,8 @@ export default function HomePage() {
   const { user } = useAuth();
   const { connections, activeConnection } = useConnections();
   const { openPalette } = useCommandPalette();
+  const newQueryBtnRef = useMagneticHover<HTMLButtonElement>();
+  const quickActionsRef = useRevealOnScroll<HTMLDivElement>();
 
   const { data: usage } = useQuery({
     queryKey: ['usage', 'today'],
@@ -244,6 +248,17 @@ export default function HomePage() {
 
   const activeSchedulesCount = schedules.filter((s) => !s.is_paused).length;
 
+  // De-emphasize "Continue working" for brand-new users with nothing to resume yet —
+  // still fully functional (each column still teaches the "Nothing here yet" empty
+  // state), just visually quieter so it doesn't compete with the primary CTA above.
+  const continueWorkingLoading = dashboardsLoading || savedLoading || metricsLoading || templatesLoading;
+  const continueWorkingEmpty =
+    !continueWorkingLoading &&
+    dashboards.length === 0 &&
+    savedQueries.length === 0 &&
+    metrics.length === 0 &&
+    templates.length === 0;
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
       {/* ── Welcome header ─────────────────────────────────────────────── */}
@@ -259,7 +274,7 @@ export default function HomePage() {
               </span>
             )}
             {!activeConnection && (
-              <span className="inline-flex items-center gap-1.5 text-amber-400/90">
+              <span className="inline-flex items-center gap-1.5 text-warning-text/90">
                 <PlugZap className="h-3.5 w-3.5" /> No database connected
               </span>
             )}
@@ -286,15 +301,21 @@ export default function HomePage() {
         <StatCard icon={LayoutDashboard} label="Dashboards" value={dashboardsData?.total} loading={dashboardsLoading} />
       </div>
 
-      {/* ── Quick actions — a slim row, not another card ─────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => navigate('/query', { state: { newChat: true } })}>
+      {/* ── Quick actions — "New query" leads, everything else recedes ───── */}
+      <div ref={quickActionsRef} className="reveal reveal-stagger flex flex-wrap items-center gap-3">
+        <Button
+          ref={newQueryBtnRef}
+          variant="gradient"
+          size="lg"
+          className="glow-primary-sm"
+          onClick={() => navigate('/query', { state: { newChat: true } })}
+        >
           <SquarePen /> New query
         </Button>
-        <Button variant="secondary" onClick={() => navigate('/dashboards')}>
+        <Button variant="outline" onClick={() => navigate('/dashboards')}>
           <LayoutDashboard /> Dashboard
         </Button>
-        <Button variant="secondary" onClick={() => navigate('/schedules')}>
+        <Button variant="outline" onClick={() => navigate('/schedules')}>
           <CalendarClock /> Schedule
         </Button>
         <DropdownMenu>
@@ -393,10 +414,14 @@ export default function HomePage() {
         </Card>
       </div>
 
-      {/* ── Continue working — full width, one row of columns ────────────── */}
-      <Card>
+      {/* ── Continue working — full width, one row of columns. Recedes
+             visually (not functionally) once there's nothing yet to resume,
+             so it doesn't compete with the primary CTA above on a first run. */}
+      <Card className={cn(continueWorkingEmpty && 'opacity-70')}>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Continue working</CardTitle>
+          <CardTitle className={cn('text-base', continueWorkingEmpty && 'text-sm text-muted-foreground')}>
+            Continue working
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-6 pt-0 sm:grid-cols-2 lg:grid-cols-4">
           <ContinueColumn
@@ -459,7 +484,7 @@ function StatCard({
       {loading || value === undefined ? (
         <Skeleton className="mt-2 h-7 w-12 rounded-md" />
       ) : (
-        <p className="mt-1 font-display text-2xl font-bold tracking-tight text-gradient-primary">{value}</p>
+        <p className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground">{value}</p>
       )}
     </Card>
   );

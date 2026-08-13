@@ -20,7 +20,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { FormMessage } from '@/components/ui/form-message';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ItemActionsMenu } from '@/components/ItemActionsMenu';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 import DataChart from '../components/DataChart';
 import { recommendChart, columnsFromRow, type ChartType } from '../utils/chart';
 import { LayoutDashboard, Plus, RefreshCw, Copy, Trash2, Pencil, ArrowLeft, Loader2, Check, X } from 'lucide-react';
@@ -49,10 +52,18 @@ function widgetChartConfig(
 
 function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack: () => void }) {
   const queryClient = useQueryClient();
+  const gridRef = useRevealOnScroll<HTMLDivElement>();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [refreshData, setRefreshData] = useState<Record<string, WidgetRefreshResult>>({});
   const [deleteWidgetConfirmId, setDeleteWidgetConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reportError = (e: unknown) => {
+    const msg = handleApiError(e);
+    setError(msg);
+    toast({ title: msg, variant: 'error' });
+  };
 
   const dashKey = ['dashboard', dashboardId] as const;
 
@@ -63,6 +74,7 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
 
   const refreshMutation = useMutation({
     mutationFn: () => refreshDashboard(dashboardId),
+    onMutate: () => setError(null),
     onSuccess: (res) => {
       const map: Record<string, WidgetRefreshResult> = {};
       for (const w of res.widgets) map[w.widget_id] = w;
@@ -73,34 +85,37 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
         variant: failed ? 'error' : 'success',
       });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const renameMutation = useMutation({
     mutationFn: (name: string) => renameDashboard(dashboardId, name),
+    onMutate: () => setError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dashKey });
       queryClient.invalidateQueries({ queryKey: ['dashboards'] });
       setEditingName(false);
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const chartTypeMutation = useMutation({
     mutationFn: ({ widgetId, chartType }: { widgetId: string; chartType: string }) =>
       updateDashboardWidget(dashboardId, widgetId, { chart_type: chartType }),
+    onMutate: () => setError(null),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashKey }),
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const deleteWidgetMutation = useMutation({
     mutationFn: (widgetId: string) => deleteDashboardWidget(dashboardId, widgetId),
+    onMutate: () => setError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dashKey });
       setDeleteWidgetConfirmId(null);
       toast({ title: 'Widget removed', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   if (isLoading || !dashboard) {
@@ -128,6 +143,7 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
                 onChange={(e) => setNameDraft(e.target.value)}
                 className="max-w-xs"
                 autoFocus
+                aria-label="Dashboard name"
                 onKeyDown={(e) => e.key === 'Enter' && nameDraft.trim() && renameMutation.mutate(nameDraft.trim())}
               />
               <Button size="sm" onClick={() => nameDraft.trim() && renameMutation.mutate(nameDraft.trim())} disabled={renameMutation.isPending}>
@@ -154,14 +170,16 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
         </Button>
       </div>
 
+      <FormMessage>{error}</FormMessage>
+
       {dashboard.widgets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <LayoutDashboard className="mb-3 h-10 w-10 text-muted-foreground/50" />
-          <p className="font-medium text-foreground">No widgets yet</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">Save a query result as a widget to see it here.</p>
-        </div>
+        <EmptyState
+          icon={LayoutDashboard}
+          title="No widgets yet"
+          description="Save a query result as a widget to see it here."
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div ref={gridRef} className="reveal reveal-stagger grid grid-cols-1 gap-4 lg:grid-cols-2">
           {dashboard.widgets.map((w) => {
             const fresh = refreshData[w.id];
             const rows = fresh?.rows ?? [];
@@ -176,6 +194,7 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
                       onChange={(e) => chartTypeMutation.mutate({ widgetId: w.id, chartType: e.target.value })}
                       className="rounded-lg border border-border bg-background/60 px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
                       title="Chart type"
+                      aria-label="Chart type"
                     >
                       {CHART_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -233,9 +252,17 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
 
 export default function DashboardsPage() {
   const queryClient = useQueryClient();
+  const gridRef = useRevealOnScroll<HTMLDivElement>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reportError = (e: unknown) => {
+    const msg = handleApiError(e);
+    setError(msg);
+    toast({ title: msg, variant: 'error' });
+  };
 
   const { data, isLoading } = useQuery<DashboardListResponse>({
     queryKey: ['dashboards'],
@@ -244,31 +271,36 @@ export default function DashboardsPage() {
 
   const createMutation = useMutation({
     mutationFn: (name: string) => createDashboard({ name }),
+    onMutate: () => setError(null),
     onSuccess: (d) => {
       queryClient.invalidateQueries({ queryKey: ['dashboards'] });
       setNewName('');
       setSelectedId(d.id);
+      setError(null);
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const duplicateMutation = useMutation({
     mutationFn: (id: string) => duplicateDashboard(id),
+    onMutate: () => setError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboards'] });
       toast({ title: 'Dashboard duplicated', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteDashboard(id),
+    onMutate: () => setError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboards'] });
       setDeleteConfirmId(null);
+      setError(null);
       toast({ title: 'Dashboard deleted', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   if (selectedId) {
@@ -291,9 +323,11 @@ export default function DashboardsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
+          id="new-dashboard-name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New dashboard name…"
+          aria-label="New dashboard name"
           className="max-w-xs"
           onKeyDown={(e) => e.key === 'Enter' && newName.trim() && createMutation.mutate(newName.trim())}
         />
@@ -307,20 +341,25 @@ export default function DashboardsPage() {
         </Button>
       </div>
 
+      <FormMessage>{error}</FormMessage>
+
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
-            <LayoutDashboard className="h-7 w-7 text-primary" />
-          </div>
-          <p className="font-medium text-foreground">No dashboards yet</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">Create one above to start composing charts.</p>
-        </div>
+        <EmptyState
+          icon={LayoutDashboard}
+          title="No dashboards yet"
+          description="Create one above to start composing charts."
+          action={{
+            label: 'New dashboard',
+            icon: Plus,
+            onClick: () => document.getElementById('new-dashboard-name')?.focus(),
+          }}
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div ref={gridRef} className="reveal reveal-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((d) => (
             <div
               key={d.id}

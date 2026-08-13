@@ -8,14 +8,18 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground font-semibold shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--primary)_70%,transparent)] hover:opacity-90 active:translate-y-px",
+          "bg-primary text-primary-foreground font-semibold shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--primary)_70%,transparent)] hover:opacity-90 hover:-translate-y-px active:translate-y-0",
+        gradient:
+          "text-primary-foreground font-semibold bg-[linear-gradient(135deg,var(--primary)_0%,var(--chart-2)_100%)] shadow-[0_10px_32px_-10px_color-mix(in_srgb,var(--primary)_65%,transparent)] hover:shadow-[0_14px_44px_-10px_color-mix(in_srgb,var(--primary)_75%,transparent)] hover:-translate-y-px active:translate-y-0",
         secondary:
           "bg-secondary text-secondary-foreground border border-border hover:bg-accent",
         outline:
           "border border-border bg-foreground/[0.02] text-foreground hover:bg-foreground/[0.06] hover:border-border",
         ghost: "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
         destructive:
-          "bg-destructive/15 text-rose-300 border border-rose-500/30 hover:bg-destructive/25 hover:border-rose-500/50",
+          "bg-destructive text-destructive-foreground font-semibold shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--destructive)_65%,transparent)] hover:opacity-90",
+        "destructive-ghost":
+          "bg-destructive-bg text-destructive-text border border-destructive-border hover:bg-destructive/20 hover:border-destructive-text/50",
         link: "text-primary underline-offset-4 hover:underline hover:text-primary",
       },
       size: {

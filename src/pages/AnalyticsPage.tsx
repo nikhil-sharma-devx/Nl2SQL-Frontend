@@ -8,6 +8,7 @@ import { Trash2, AlertTriangle, RefreshCw, TrendingUp, Activity, Zap, Clock, Ale
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 
 const CHART_OPTIONS = [
   { id: 'popular_queries', label: 'Popular Queries' },
@@ -62,6 +63,11 @@ interface FailurePattern {
   count: number;
 }
 
+/** Matches Tailwind's `sm` breakpoint — below this, angled 10-category X-axis
+ * labels overlap illegibly, so we drop them and rely on the tooltip instead
+ * (the underlying data is still fully reachable there). */
+const NARROW_QUERY = '(max-width: 639px)';
+
 export default function AnalyticsPage() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [popularQueries, setPopularQueries] = useState<PopularQuery[]>([]);
@@ -80,6 +86,17 @@ export default function AnalyticsPage() {
     new Set(CHART_OPTIONS.map((c) => c.id))
   );
   const [showChartPicker, setShowChartPicker] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(NARROW_QUERY).matches,
+  );
+  const statsGridRef = useRevealOnScroll<HTMLDivElement>();
+
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_QUERY);
+    const handler = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const toggleChart = (id: ChartId) => {
     setVisibleCharts((prev) => {
@@ -202,18 +219,18 @@ export default function AnalyticsPage() {
     ? [
         { label: 'Total Queries', value: summary.total_queries, icon: Activity, accent: 'text-foreground', glow: 'group-hover:text-primary' },
         { label: 'Success Rate', value: `${summary.success_rate}%`, icon: TrendingUp, accent: 'text-primary', glow: '' },
-        { label: 'Cache Hit Rate', value: `${summary.cache_hit_rate}%`, icon: Zap, accent: 'text-cyan-400', glow: '' },
-        { label: 'Avg Response', value: `${Math.round(summary.avg_response_time_ms)}ms`, icon: Clock, accent: 'text-violet-400', glow: '' },
+        { label: 'Cache Hit Rate', value: `${summary.cache_hit_rate}%`, icon: Zap, accent: 'text-info-text', glow: '' },
+        { label: 'Avg Response', value: `${Math.round(summary.avg_response_time_ms)}ms`, icon: Clock, accent: 'text-violet-text', glow: '' },
       ]
     : [];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 pb-6">
       {fetchError && (
-        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-destructive-border bg-destructive-bg px-4 py-3 text-sm text-destructive-text">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{fetchError}</span>
-          <button onClick={() => setFetchError(null)} className="ml-auto rounded p-0.5 hover:bg-rose-500/20" aria-label="Dismiss">
+          <button onClick={() => setFetchError(null)} className="ml-auto rounded p-0.5 hover:bg-destructive/20" aria-label="Dismiss">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -225,7 +242,7 @@ export default function AnalyticsPage() {
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            className="cursor-pointer rounded-lg border border-border bg-background/60 px-3 py-1.5 text-sm text-foreground focus:border-primary/50 focus:outline-none [&>option]:bg-popover"
+            className="cursor-pointer rounded-lg border border-border bg-background/60 px-3 py-1.5 text-sm text-foreground focus:border-primary/50 [&>option]:bg-popover"
           >
             <option value={7}>Last 7 days</option>
             <option value={30}>Last 30 days</option>
@@ -294,11 +311,11 @@ export default function AnalyticsPage() {
               <Trash2 className="h-4 w-4" /> Reset
             </Button>
           ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5">
-              <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-rose-300">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive-border bg-destructive-bg px-3 py-1.5">
+              <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-destructive-text">
                 <AlertTriangle className="h-4 w-4" /> Confirm?
               </span>
-              <button onClick={handleResetAnalytics} disabled={resetting} className="rounded border border-rose-500/40 bg-rose-500/20 px-2.5 py-1 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/40 disabled:opacity-50">
+              <button onClick={handleResetAnalytics} disabled={resetting} className="rounded border border-destructive-border bg-destructive/20 px-2.5 py-1 text-xs font-medium text-destructive-text transition-colors hover:bg-destructive/40 disabled:opacity-50">
                 {resetting ? 'WAIT…' : 'YES'}
               </button>
               <button onClick={cancelReset} disabled={resetting} className="rounded border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/85 transition-colors hover:bg-foreground/10 disabled:opacity-50">
@@ -311,9 +328,9 @@ export default function AnalyticsPage() {
 
       {/* Overview Cards */}
       {summary && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div ref={statsGridRef} className="reveal reveal-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {statCards.map((s) => (
-            <Card key={s.label} className="card-lift group cursor-pointer p-6 transition-all duration-200 hover:border-primary/30">
+            <Card key={s.label} className="card-lift group p-6 transition-all duration-200 hover:border-primary/30">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{s.label}</h3>
@@ -336,7 +353,13 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={popularQueries}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="question" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} angle={-45} textAnchor="end" height={100} />
+                    <XAxis
+                      dataKey="question"
+                      tick={isNarrow ? false : { fill: 'var(--muted-foreground)', fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={isNarrow ? 12 : 100}
+                    />
                     <YAxis tick={{ fill: 'var(--muted-foreground)' }} />
                     <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--foreground)', fontWeight: 500 }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                     <Bar dataKey="count" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
@@ -394,7 +417,7 @@ export default function AnalyticsPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-foreground/85">{pattern.count} occurrences</span>
                       </div>
-                      <div className="mt-1 text-xs text-rose-400/80">
+                      <div className="mt-1 text-xs text-destructive-text/80">
                         {Array.isArray(pattern.errors) ? pattern.errors.join(', ') : String(pattern.errors)}
                       </div>
                     </div>
@@ -413,17 +436,17 @@ export default function AnalyticsPage() {
           <CardHeader><CardTitle>Additional Statistics</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="glass-card card-lift rounded-xl p-4 cursor-pointer">
+              <div className="glass-card card-lift rounded-xl p-4">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Tokens Used</p>
                 <p className="mt-1 font-display text-2xl font-bold text-foreground">{Math.round(summary.avg_tokens_used)}</p>
               </div>
-              <div className="glass-card card-lift rounded-xl p-4 cursor-pointer">
+              <div className="glass-card card-lift rounded-xl p-4">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cached Queries</p>
-                <p className="mt-1 font-display text-2xl font-bold text-cyan-400">{summary.cached_queries}</p>
+                <p className="mt-1 font-display text-2xl font-bold text-info-text">{summary.cached_queries}</p>
               </div>
-              <div className="glass-card card-lift rounded-xl p-4 cursor-pointer">
+              <div className="glass-card card-lift rounded-xl p-4">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Failed Queries</p>
-                <p className="mt-1 font-display text-2xl font-bold text-rose-400">{summary.failed_queries}</p>
+                <p className="mt-1 font-display text-2xl font-bold text-destructive-text">{summary.failed_queries}</p>
               </div>
             </div>
           </CardContent>
@@ -436,7 +459,7 @@ export default function AnalyticsPage() {
           {show('cache_layers') && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Layers className="h-4 w-4 text-cyan-400" /> Cache Hit Rate by Layer</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Layers className="h-4 w-4 text-info-text" /> Cache Hit Rate by Layer</CardTitle>
               </CardHeader>
               <CardContent>
                 {cacheStats && cacheStats.total_lookups > 0 ? (
@@ -449,7 +472,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="glass-card rounded-xl p-4">
                         <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">L2 · Semantic Hit %</p>
-                        <p className="mt-1 font-display text-2xl font-bold text-cyan-400">{(cacheStats.semantic_hit_rate * 100).toFixed(1)}%</p>
+                        <p className="mt-1 font-display text-2xl font-bold text-info-text">{(cacheStats.semantic_hit_rate * 100).toFixed(1)}%</p>
                         <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/70">{cacheStats.semantic_hits} hits</p>
                       </div>
                     </div>
@@ -461,7 +484,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex h-3 w-full overflow-hidden rounded-full bg-background/60">
                         <div className="h-full bg-primary" style={{ width: `${cacheStats.exact_hit_rate * 100}%` }} title="Exact hits" />
-                        <div className="h-full bg-cyan-400" style={{ width: `${cacheStats.semantic_hit_rate * 100}%` }} title="Semantic hits" />
+                        <div className="h-full bg-info-text" style={{ width: `${cacheStats.semantic_hit_rate * 100}%` }} title="Semantic hits" />
                       </div>
                     </div>
                   </div>
@@ -475,7 +498,7 @@ export default function AnalyticsPage() {
           {show('latency_breakdown') && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Gauge className="h-4 w-4 text-violet-400" /> Pipeline Latency Breakdown</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Gauge className="h-4 w-4 text-violet-text" /> Pipeline Latency Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
                 {latency && latency.samples > 0 ? (

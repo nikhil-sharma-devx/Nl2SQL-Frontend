@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 import {
@@ -15,33 +15,8 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { getVisualizeSchema, getDatabaseConfig, handleApiError } from '../api/client';
 import { Loader2, RefreshCw, AlertTriangle, Maximize2, X } from 'lucide-react';
-
-// ── localStorage cache helpers ────────────────────────────────────────────────
-const CACHE_KEY = 'nl2sql_schema_graph_cache';
-
-interface SchemaCache {
-  dbUrl: string;
-  schema: any;
-}
-
-function saveSchemaCache(dbUrl: string, schema: any) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ dbUrl, schema }));
-  } catch {
-    // quota exceeded or private mode — ignore silently
-  }
-}
-
-function loadSchemaCache(): SchemaCache | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+import { useSchemaGraphData } from '../hooks/useSchemaGraphData';
 
 // ── Custom Table Node Component ───────────────────────────────────────────────
 const TableNode = ({ data, selected }: { data: any; selected: boolean }) => {
@@ -53,7 +28,7 @@ const TableNode = ({ data, selected }: { data: any; selected: boolean }) => {
         selected
           ? 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.4)]'
           : isHighlighted
-          ? 'border-primary shadow-[0_0_20px_rgba(16,185,129,0.4)] ring-2 ring-primary/50'
+          ? 'border-primary shadow-[0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)] ring-2 ring-primary/50'
           : 'border-border shadow-[0_10px_30px_rgba(0,0,0,0.5)]'
       } bg-popover/95`}
     >
@@ -146,15 +121,10 @@ function buildNodesAndEdges(schema: any, highlightedTables: string[]) {
 }
 
 export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps) {
+  const { schema, loading, error, staleWarning, refetch } = useSchemaGraphData();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [staleWarning, setStaleWarning] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // Track current DB URL so we can compare against cache
-  const currentDbUrl = useRef<string | null>(null);
 
   // Close fullscreen on Escape key
   useEffect(() => {
@@ -171,71 +141,17 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
     };
   }, [isFullscreen]);
 
-  const fetchSchema = useCallback(async (retryCount = 0) => {
-    setLoading(true);
-    setError(null);
-    setStaleWarning(null);
-
-    // Fetch current DB URL for cache comparison
-    let dbUrl = '';
-    try {
-      const dbConfig = await getDatabaseConfig();
-      dbUrl = dbConfig.database_url || '';
-      currentDbUrl.current = dbUrl;
-    } catch {
-      // If we can't get DB config, proceed without caching logic
-    }
-
-    try {
-      const schema = await getVisualizeSchema();
-      if (!schema || !schema.tables) {
-        throw new Error('Invalid schema format received.');
-      }
-
-      // Save successful response to cache
-      if (dbUrl) {
-        saveSchemaCache(dbUrl, schema);
-      }
-
+  // Full layout rebuild whenever the underlying schema changes (initial load
+  // or manual refresh) — uses whichever `highlightedTables` is current.
+  useEffect(() => {
+    if (schema?.tables) {
       const { newNodes, newEdges } = buildNodesAndEdges(schema, highlightedTables);
       setNodes(newNodes);
       setEdges(newEdges);
-    } catch (err: any) {
-      console.error(err);
-
-      // Auto-retry once on timeout (first request often warms up a cold DB pool)
-      const isTimeout =
-        err?.code === 'ECONNABORTED' ||
-        err?.message?.toLowerCase().includes('timeout');
-      if (isTimeout && retryCount < 1) {
-        console.log('Schema graph timed out, retrying…');
-        return fetchSchema(retryCount + 1);
-      }
-
-      // ── Try to restore from cache ──────────────────────────────────────────
-      const cache = loadSchemaCache();
-      if (cache?.schema?.tables && dbUrl && cache.dbUrl === dbUrl) {
-        // Same DB → show the cached graph with a stale-data warning
-        const { newNodes, newEdges } = buildNodesAndEdges(cache.schema, highlightedTables);
-        setNodes(newNodes);
-        setEdges(newEdges);
-        setStaleWarning('Unable to load the latest schema — showing previously loaded data.');
-        setError(null);
-      } else {
-        // Different DB or no cache — show retry error
-        const msg = isTimeout
-          ? 'Database is taking too long to respond. Please check your connection and try again.'
-          : handleApiError(err) || 'Failed to load schema.';
-        setError(msg);
-      }
-    } finally {
-      setLoading(false);
     }
-  }, [highlightedTables, setNodes, setEdges]);
-
-  useEffect(() => {
-    fetchSchema();
-  }, [fetchSchema]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- highlight-only
+    // changes are handled by the effect below without a full rebuild.
+  }, [schema]);
 
   // Update highlighted state without full refetch if nodes exist
   useEffect(() => {
@@ -273,7 +189,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
   if (loading && nodes.length === 0) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center rounded-xl border border-border bg-background text-muted-foreground">
-        <Loader2 className="mb-4 h-8 w-8 animate-spin text-violet-500" />
+        <Loader2 className="mb-4 h-8 w-8 animate-spin text-violet-text" />
         <p>Loading schema visualization…</p>
       </div>
     );
@@ -283,7 +199,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
     return (
       <div className="flex h-full w-full flex-col items-center justify-center rounded-xl border border-destructive-border bg-background text-destructive-text">
         <p className="mb-4">{error}</p>
-        <button onClick={() => fetchSchema()} className="rounded-lg bg-destructive-bg px-4 py-2 transition-colors hover:bg-destructive-text/20">
+        <button onClick={() => refetch()} className="rounded-lg bg-destructive-bg px-4 py-2 transition-colors hover:bg-destructive-text/20">
           Try Again
         </button>
       </div>
@@ -299,7 +215,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
           <AlertTriangle className="h-4 w-4 shrink-0 text-warning-text" />
           <span className="flex-1">{staleWarning}</span>
           <button
-            onClick={() => fetchSchema()}
+            onClick={() => refetch()}
             className="shrink-0 rounded bg-warning-text/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-warning-text transition-colors hover:bg-warning-text/20"
           >
             Retry
@@ -309,7 +225,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
 
       <div className="absolute right-4 top-4 z-10 flex gap-2">
         <button
-          onClick={() => fetchSchema()}
+          onClick={() => refetch()}
           className="rounded-lg border border-border bg-card/80 p-2 text-foreground/85 backdrop-blur transition-colors hover:bg-foreground/10"
           title="Refresh schema graph"
         >
@@ -318,7 +234,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
         {fullscreen ? (
           <button
             onClick={() => setIsFullscreen(false)}
-            className="rounded-lg border border-border bg-card/80 p-2 text-foreground/85 backdrop-blur transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+            className="rounded-lg border border-border bg-card/80 p-2 text-foreground/85 backdrop-blur transition-colors hover:bg-destructive-bg hover:text-destructive-text"
             title="Close fullscreen"
           >
             <X className="h-4 w-4" />
@@ -326,7 +242,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
         ) : (
           <button
             onClick={() => setIsFullscreen(true)}
-            className="rounded-lg border border-border bg-card/80 p-2 text-foreground/85 backdrop-blur transition-colors hover:bg-violet-500/20 hover:text-violet-300"
+            className="rounded-lg border border-border bg-card/80 p-2 text-foreground/85 backdrop-blur transition-colors hover:bg-violet-bg hover:text-violet-text"
             title="Expand to fullscreen"
           >
             <Maximize2 className="h-4 w-4" />
@@ -352,8 +268,8 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
         <Background color="#1e293b" gap={24} size={2} />
         <Controls className="border-border bg-card fill-foreground" />
         <MiniMap
-          nodeColor={(n) => (n.data?.isHighlighted ? '#10b981' : '#334155')}
-          maskColor="rgba(10, 12, 17, 0.7)"
+          nodeColor={(n) => (n.data?.isHighlighted ? '#c8903f' : '#334155')}
+          maskColor="rgba(11, 17, 25, 0.7)"
           className="border border-border bg-card"
         />
       </ReactFlow>
@@ -367,7 +283,7 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
         {/* Keep inline placeholder so layout doesn't collapse */}
         <div className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-background">
           <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
-            <Maximize2 className="mb-2 h-6 w-6 text-violet-400" />
+            <Maximize2 className="mb-2 h-6 w-6 text-violet-text" />
             <p className="text-sm">Graph is in fullscreen mode</p>
             <button
               onClick={() => setIsFullscreen(false)}

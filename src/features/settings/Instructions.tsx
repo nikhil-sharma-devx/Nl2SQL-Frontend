@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
 import apiClient from '../../api/client';
-import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
+import { FormMessage } from '../../components/ui/form-message';
 import InfoTip from '../../components/InfoTip';
 
 const CHAR_CAP = 2000;
@@ -13,6 +14,15 @@ interface InstructionsData {
   enabled: boolean;
   char_count: number;
   updated_at: string;
+}
+
+function SavedBadge({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary animate-fade-in">
+      <Check className="h-3.5 w-3.5" /> Saved
+    </span>
+  );
 }
 
 export default function InstructionsSettings() {
@@ -26,6 +36,7 @@ export default function InstructionsSettings() {
   const [content, setContent] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (data) {
@@ -40,25 +51,39 @@ export default function InstructionsSettings() {
     onSuccess: (d) => {
       queryClient.setQueryData(['instructions'], d);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSaved(false), 1500);
     },
   });
+
+  const commit = (next: { content: string; enabled: boolean }) => {
+    mutation.mutate(next);
+  };
 
   const remaining = CHAR_CAP - content.length;
 
   return (
     <div className="space-y-4 max-w-lg">
-      <p className="text-sm text-muted-foreground">
-        Persistent context prepended to every generation prompt. Use this for recurring
-        preferences like "always use UTC timestamps" or "prefer CTEs over subqueries".
-      </p>
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">
+          Persistent context prepended to every generation prompt. Use this for recurring
+          preferences like "always use UTC timestamps" or "prefer CTEs over subqueries".
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          Instructions are style/behavior rules for how the AI writes SQL. For business
+          vocabulary (what a term means), use the Glossary tab instead.
+        </p>
+      </div>
 
       <div className="flex items-center gap-3">
         <input
           id="instr-enabled"
           type="checkbox"
           checked={enabled}
-          onChange={(e) => setEnabled(e.target.checked)}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            commit({ content, enabled: e.target.checked });
+          }}
           className="h-4 w-4 rounded border-border accent-primary"
         />
         <Label htmlFor="instr-enabled">
@@ -68,9 +93,12 @@ export default function InstructionsSettings() {
       </div>
 
       <div className="space-y-1">
+        <Label htmlFor="instr-content">Instructions text</Label>
         <Textarea
+          id="instr-content"
           value={content}
           onChange={(e) => setContent(e.target.value.slice(0, CHAR_CAP))}
+          onBlur={() => commit({ content, enabled })}
           placeholder="E.g. Always use UTC for timestamps. Prefer CTEs. Use snake_case aliases."
           rows={7}
           disabled={!enabled}
@@ -81,17 +109,11 @@ export default function InstructionsSettings() {
         </p>
       </div>
 
-      {mutation.isError && (
-        <p className="text-sm text-destructive">Failed to save instructions.</p>
-      )}
-      {saved && <p className="text-sm text-primary">Instructions saved.</p>}
-
-      <Button
-        onClick={() => mutation.mutate({ content, enabled })}
-        disabled={mutation.isPending || isLoading}
-      >
-        {mutation.isPending ? 'Saving…' : 'Save Instructions'}
-      </Button>
+      <div className="flex items-center gap-2">
+        <FormMessage>{mutation.isError ? 'Failed to save instructions.' : ''}</FormMessage>
+        <SavedBadge show={saved && !mutation.isError} />
+        {isLoading && <span className="text-xs text-muted-foreground">Loading…</span>}
+      </div>
     </div>
   );
 }

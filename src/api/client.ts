@@ -1084,10 +1084,11 @@ export const renderTemplate = async (id: number, values: Record<string, string>)
 // ── Phase 2: Favorited Tables ─────────────────────────────────────────────────
 
 export type FavoritedTable = Schemas['FavoritedTableOut'];
+export type FavoritedTableListResponse = Schemas['FavoritedTableListResponse'];
 
 export const getFavoritedTables = async () => {
   const r = await apiClient.get('/favorited-tables');
-  return r.data as FavoritedTable[];
+  return (r.data as FavoritedTableListResponse).items;
 };
 
 export const pinTable = async (d: { table_name: string; schema_name?: string; note?: string }) => {

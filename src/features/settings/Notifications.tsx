@@ -1,6 +1,8 @@
+import { useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getNotificationPrefs, updateNotificationPrefs, type NotificationPrefs } from '../../api/client';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FormMessage } from '../../components/ui/form-message';
 import { cn } from '@/lib/utils';
 
 function Toggle({ checked, onChange, label, description }: {
@@ -9,19 +11,23 @@ function Toggle({ checked, onChange, label, description }: {
   label: string;
   description?: string;
 }) {
+  const labelId = useId();
+  const descId = useId();
   return (
     <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card/30 p-4">
       <div className="flex-1">
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+        <p id={labelId} className="text-sm font-medium text-foreground">{label}</p>
+        {description && <p id={descId} className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-labelledby={labelId}
+        aria-describedby={description ? descId : undefined}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative mt-0.5 h-5 w-9 shrink-0 rounded-full border-2 transition-colors duration-200',
+          'relative mt-0.5 h-5 w-9 shrink-0 rounded-full border-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           checked ? 'border-primary bg-primary' : 'border-border bg-border/40',
         )}
       >
@@ -93,9 +99,7 @@ export default function NotificationsSettings() {
         description="Occasional emails about new features and usage tips."
       />
 
-      {mutation.isError && (
-        <p className="text-sm text-destructive">Failed to save preference. Please try again.</p>
-      )}
+      <FormMessage>{mutation.isError ? 'Failed to save preference. Please try again.' : ''}</FormMessage>
     </div>
   );
 }

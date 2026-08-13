@@ -40,8 +40,8 @@ const AiOrb = ({ size = 'sm', className = '' }: AiOrbProps) => {
           width: isLg ? '46%' : '100%',
           height: isLg ? '46%' : '100%',
           boxShadow: isLg
-            ? '0 0 90px 30px rgba(16,185,129,0.28), 0 0 160px 60px rgba(34,211,238,0.12)'
-            : '0 0 14px 4px rgba(16,185,129,0.4)',
+            ? '0 0 90px 30px color-mix(in srgb, var(--primary) 28%, transparent), 0 0 160px 60px color-mix(in srgb, var(--chart-2) 12%, transparent)'
+            : '0 0 14px 4px color-mix(in srgb, var(--primary) 40%, transparent)',
         }}
       />
     </div>

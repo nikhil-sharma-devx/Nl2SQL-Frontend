@@ -46,7 +46,7 @@ export function SchemaExplanationDialog({
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-emerald-400" />
+            <Sparkles className="h-5 w-5 text-success-text" />
             <span className="font-mono">{title}</span>
             {data?.cached && (
               <Badge variant="secondary" className="ml-1">

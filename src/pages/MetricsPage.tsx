@@ -16,10 +16,14 @@ import {
 import { toast } from '../components/ui/toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { FormMessage } from '@/components/ui/form-message';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ItemActionsMenu } from '@/components/ItemActionsMenu';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 import {
   BadgeCheck,
   Plus,
@@ -43,8 +47,15 @@ function MetricCard({ metric }: { metric: Metric }) {
   const [description, setDescription] = useState(metric.description ?? '');
   const [sqlDefinition, setSqlDefinition] = useState(metric.sql_definition);
   const [tags, setTags] = useState(metric.tags.join(', '));
+  const [error, setError] = useState<string | null>(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['metrics'] });
+
+  const reportError = (e: unknown) => {
+    const msg = handleApiError(e);
+    setError(msg);
+    toast({ title: msg, variant: 'error' });
+  };
 
   const updateMutation = useMutation({
     mutationFn: () =>
@@ -54,39 +65,47 @@ function MetricCard({ metric }: { metric: Metric }) {
         sql_definition: sqlDefinition,
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
       }),
+    onMutate: () => setError(null),
     onSuccess: () => {
       invalidate();
       setEditing(false);
+      setError(null);
       toast({ title: 'Metric updated', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteMetric(metric.metric_id),
+    onMutate: () => setError(null),
     onSuccess: () => {
       invalidate();
+      setError(null);
       toast({ title: 'Metric deleted', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const certifyMutation = useMutation({
     mutationFn: () => (metric.certified ? uncertifyMetric(metric.metric_id) : certifyMetric(metric.metric_id)),
+    onMutate: () => setError(null),
     onSuccess: (m) => {
       invalidate();
+      setError(null);
       toast({ title: m.certified ? 'Metric certified' : 'Certification removed', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const previewMutation = useMutation({
     mutationFn: () => previewMetric(metric.metric_id),
+    onMutate: () => setError(null),
     onSuccess: (res) => {
       setPreview(res);
       setShowPreview(true);
+      setError(null);
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: reportError,
   });
 
   const hasValidationErrors = metric.validation_errors.length > 0;
@@ -95,20 +114,34 @@ function MetricCard({ metric }: { metric: Metric }) {
     <div className="glass-card card-lift rounded-xl p-4">
       {editing ? (
         <div className="space-y-2">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Metric name" />
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description"
-            className="min-h-[60px]"
-          />
-          <Textarea
-            value={sqlDefinition}
-            onChange={(e) => setSqlDefinition(e.target.value)}
-            placeholder="SQL definition"
-            className="min-h-[80px] font-mono text-xs"
-          />
-          <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma-separated)" />
+          <div className="space-y-1.5">
+            <Label htmlFor={`metric-name-${metric.metric_id}`}>Metric name</Label>
+            <Input id={`metric-name-${metric.metric_id}`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Metric name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`metric-description-${metric.metric_id}`}>Description</Label>
+            <Textarea
+              id={`metric-description-${metric.metric_id}`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description"
+              className="min-h-[60px]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`metric-sql-${metric.metric_id}`}>SQL definition</Label>
+            <Textarea
+              id={`metric-sql-${metric.metric_id}`}
+              value={sqlDefinition}
+              onChange={(e) => setSqlDefinition(e.target.value)}
+              placeholder="SQL definition"
+              className="min-h-[80px] font-mono text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`metric-tags-${metric.metric_id}`}>Tags</Label>
+            <Input id={`metric-tags-${metric.metric_id}`} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma-separated)" />
+          </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
@@ -223,6 +256,7 @@ function MetricCard({ metric }: { metric: Metric }) {
           )}
         </>
       )}
+      <FormMessage className="mt-2">{error}</FormMessage>
     </div>
   );
 }
@@ -235,8 +269,10 @@ export default function MetricsPage() {
   const [description, setDescription] = useState('');
   const [sqlDefinition, setSqlDefinition] = useState('');
   const [tags, setTags] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
+  const listRef = useRevealOnScroll<HTMLDivElement>();
 
   const { data, isLoading } = useQuery<MetricListResponse>({
     queryKey: ['metrics', search, certifiedOnly],
@@ -251,6 +287,7 @@ export default function MetricsPage() {
         sql_definition: sqlDefinition,
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
       }),
+    onMutate: () => setCreateError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
       setName('');
@@ -258,9 +295,14 @@ export default function MetricsPage() {
       setSqlDefinition('');
       setTags('');
       setShowCreate(false);
+      setCreateError(null);
       toast({ title: 'Metric created', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: (e) => {
+      const msg = handleApiError(e);
+      setCreateError(msg);
+      toast({ title: msg, variant: 'error' });
+    },
   });
 
   const items = data?.items ?? [];
@@ -286,6 +328,7 @@ export default function MetricsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search metrics…"
+            aria-label="Search metrics"
             className="pl-9"
           />
         </div>
@@ -297,24 +340,39 @@ export default function MetricsPage() {
 
       {showCreate && (
         <div className="space-y-2 rounded-xl border border-border bg-card/70 p-4">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Metric name, e.g. Net Revenue" />
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description"
-            className="min-h-[60px]"
-          />
-          <Textarea
-            value={sqlDefinition}
-            onChange={(e) => setSqlDefinition(e.target.value)}
-            placeholder="SQL definition, e.g. SELECT SUM(amount) - SUM(refunds) FROM orders"
-            className="min-h-[80px] font-mono text-xs"
-          />
-          <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma-separated)" />
+          <div className="space-y-1.5">
+            <Label htmlFor="new-metric-name">Metric name</Label>
+            <Input id="new-metric-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Metric name, e.g. Net Revenue" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-metric-description">Description</Label>
+            <Textarea
+              id="new-metric-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description"
+              className="min-h-[60px]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-metric-sql">SQL definition</Label>
+            <Textarea
+              id="new-metric-sql"
+              value={sqlDefinition}
+              onChange={(e) => setSqlDefinition(e.target.value)}
+              placeholder="SQL definition, e.g. SELECT SUM(amount) - SUM(refunds) FROM orders"
+              className="min-h-[80px] font-mono text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-metric-tags">Tags</Label>
+            <Input id="new-metric-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma-separated)" />
+          </div>
           <Button size="sm" onClick={() => createMutation.mutate()} disabled={!canCreate || createMutation.isPending}>
             {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Create
           </Button>
+          <FormMessage>{createError}</FormMessage>
         </div>
       )}
 
@@ -323,17 +381,14 @@ export default function MetricsPage() {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
-            <BadgeCheck className="h-7 w-7 text-primary" />
-          </div>
-          <p className="font-medium text-foreground">No metrics defined yet</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">
-            Create one above and certify it so the SQL generator prefers it over ad-hoc calculations.
-          </p>
-        </div>
+        <EmptyState
+          icon={BadgeCheck}
+          title="No metrics defined yet"
+          description="Create one above and certify it so the SQL generator prefers it over ad-hoc calculations."
+          action={{ label: 'New metric', onClick: () => setShowCreate(true), icon: Plus }}
+        />
       ) : (
-        <div className="space-y-3">
+        <div ref={listRef} className="reveal reveal-stagger space-y-3">
           {items.map((m) => (
             <MetricCard key={m.metric_id} metric={m} />
           ))}

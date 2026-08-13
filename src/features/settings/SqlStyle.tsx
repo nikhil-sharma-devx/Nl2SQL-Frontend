@@ -1,9 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Check } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
-import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
+import { FormMessage } from '../../components/ui/form-message';
 import InfoTip from '../../components/InfoTip';
+
+function SavedBadge({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary animate-fade-in">
+      <Check className="h-3.5 w-3.5" /> Saved
+    </span>
+  );
+}
 
 type RadioGroupProps = {
   label: string;
@@ -41,7 +51,7 @@ function RadioGroup({ label, info, name, options, value, onChange }: RadioGroupP
 }
 
 export default function SqlStyleSettings() {
-  const { settings, updateSettings, isSaving } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [form, setForm] = useState({
     sql_keyword_case: settings.sql_keyword_case,
     sql_cte_pref: settings.sql_cte_pref,
@@ -49,6 +59,8 @@ export default function SqlStyleSettings() {
     sql_indent: settings.sql_indent,
   });
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     setForm({
@@ -58,14 +70,15 @@ export default function SqlStyleSettings() {
       sql_indent: settings.sql_indent,
     });
   }, [settings]);
-  const [error, setError] = useState('');
 
-  const handleSave = async () => {
+  const commit = async (next: typeof form) => {
+    setForm(next);
     try {
       setError('');
-      await updateSettings(form);
+      await updateSettings(next);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSaved(false), 1500);
     } catch {
       setError('Failed to save settings');
     }
@@ -82,7 +95,7 @@ export default function SqlStyleSettings() {
           { value: 'lower', label: 'lower (select, from…)' },
         ]}
         value={form.sql_keyword_case}
-        onChange={(v) => setForm(f => ({ ...f, sql_keyword_case: v as 'upper' | 'lower' }))}
+        onChange={(v) => commit({ ...form, sql_keyword_case: v as 'upper' | 'lower' })}
       />
 
       <RadioGroup
@@ -94,7 +107,7 @@ export default function SqlStyleSettings() {
           { value: 'subquery', label: 'Subquery' },
         ]}
         value={form.sql_cte_pref}
-        onChange={(v) => setForm(f => ({ ...f, sql_cte_pref: v as 'cte' | 'subquery' }))}
+        onChange={(v) => commit({ ...form, sql_cte_pref: v as 'cte' | 'subquery' })}
       />
 
       <RadioGroup
@@ -106,30 +119,30 @@ export default function SqlStyleSettings() {
           { value: 'implicit', label: 'Implicit (no AS)' },
         ]}
         value={form.sql_alias_style}
-        onChange={(v) => setForm(f => ({ ...f, sql_alias_style: v as 'as' | 'implicit' }))}
+        onChange={(v) => commit({ ...form, sql_alias_style: v as 'as' | 'implicit' })}
       />
 
       <div className="space-y-1.5">
-        <Label>
+        <Label htmlFor="sql-indent">
           Indent Width
           <InfoTip text="Number of spaces used per indentation level in generated SQL. 2 is standard for most SQL formatters; 4 is common in some enterprise environments." />
         </Label>
         <Input
+          id="sql-indent"
           type="number"
           min={1}
           max={8}
           value={form.sql_indent}
           onChange={(e) => setForm(f => ({ ...f, sql_indent: Number(e.target.value) }))}
+          onBlur={() => commit(form)}
           className="w-24"
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {saved && <p className="text-sm text-primary">SQL style saved.</p>}
-
-      <Button onClick={handleSave} disabled={isSaving}>
-        {isSaving ? 'Saving…' : 'Save Style'}
-      </Button>
+      <div className="flex items-center gap-2 pt-1">
+        <FormMessage>{error}</FormMessage>
+        <SavedBadge show={saved && !error} />
+      </div>
     </div>
   );
 }

@@ -58,22 +58,22 @@ export default function UsageModal({ open, onClose }: Props) {
       label: 'Tokens in',
       value: data ? fmt(data.tokens_in) : '—',
       icon: TrendingUp,
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/10',
+      color: 'text-info-text',
+      bg: 'bg-info-bg',
     },
     {
       label: 'Tokens out',
       value: data ? fmt(data.tokens_out) : '—',
       icon: Zap,
-      color: 'text-violet-400',
-      bg: 'bg-violet-500/10',
+      color: 'text-violet-text',
+      bg: 'bg-violet-bg',
     },
     {
       label: 'Est. cost',
       value: data ? `$${data.est_cost_usd.toFixed(4)}` : '—',
       icon: DollarSign,
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/10',
+      color: 'text-warning-text',
+      bg: 'bg-warning-bg',
     },
   ];
 
@@ -142,7 +142,7 @@ export default function UsageModal({ open, onClose }: Props) {
         </div>
 
         {isError && (
-          <p className="px-6 pb-4 text-center text-xs text-rose-400">
+          <p role="alert" aria-live="assertive" className="px-6 pb-4 text-center text-xs text-destructive-text">
             Failed to load usage data.
           </p>
         )}

@@ -107,7 +107,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       role="dialog"
       aria-modal="true"
       className={cn(
-        "relative z-10 w-full max-w-md rounded-2xl border border-border bg-popover/95 p-6 text-popover-foreground shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] backdrop-blur-2xl animate-slide-up",
+        "glass-strong shadow-depth-4 relative z-10 w-full max-w-md rounded-2xl p-6 text-popover-foreground animate-modal-in",
         className,
       )}
       {...props}

@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Search,
   SquarePen,
@@ -26,12 +27,19 @@ import {
   FileCode2,
   BrainCircuit,
   HelpCircle,
+  ListChecks,
   CornerDownLeft,
   type LucideIcon,
 } from 'lucide-react';
 import { useFocusTrap } from '@/components/ui/dialog';
 import { useCommandPalette } from '@/context/CommandPaletteContext';
+import { patchTutorialProgress } from '../api/client';
 import { cn } from '@/lib/utils';
+
+interface CommandCtx {
+  navigate: ReturnType<typeof useNavigate>;
+  queryClient: ReturnType<typeof useQueryClient>;
+}
 
 interface Command {
   key: string;
@@ -40,7 +48,7 @@ interface Command {
   keywords?: string;
   icon: LucideIcon;
   group: 'Actions' | 'Pages';
-  run: (navigate: ReturnType<typeof useNavigate>) => void;
+  run: (ctx: CommandCtx) => void;
 }
 
 const COMMANDS: Command[] = [
@@ -51,7 +59,7 @@ const COMMANDS: Command[] = [
     keywords: 'new chat query ask',
     icon: SquarePen,
     group: 'Actions',
-    run: (navigate) => navigate('/query', { state: { newChat: true } }),
+    run: ({ navigate }) => navigate('/query', { state: { newChat: true } }),
   },
   {
     key: 'settings',
@@ -59,20 +67,37 @@ const COMMANDS: Command[] = [
     keywords: 'preferences config',
     icon: Settings,
     group: 'Actions',
-    run: (navigate) => navigate('/settings'),
+    run: ({ navigate }) => navigate('/settings'),
   },
-  { key: 'home', label: 'Home', keywords: 'dashboard overview', icon: Home, group: 'Pages', run: (n) => n('/') },
-  { key: 'query', label: 'Query', keywords: 'chat ask sql', icon: Database, group: 'Pages', run: (n) => n('/query') },
-  { key: 'schema', label: 'Schema', keywords: 'connections databases upload ingest', icon: Upload, group: 'Pages', run: (n) => n('/schema') },
-  { key: 'history', label: 'History', keywords: 'sessions past conversations', icon: Clock, group: 'Pages', run: (n) => n('/history') },
-  { key: 'analytics', label: 'Analytics', keywords: 'usage accuracy performance', icon: BarChart3, group: 'Pages', run: (n) => n('/analytics') },
-  { key: 'saved', label: 'Saved Queries', keywords: 'bookmarks starred sql', icon: Bookmark, group: 'Pages', run: (n) => n('/saved') },
-  { key: 'dashboards', label: 'Dashboards', keywords: 'charts widgets', icon: LayoutDashboard, group: 'Pages', run: (n) => n('/dashboards') },
-  { key: 'schedules', label: 'Scheduled Queries', keywords: 'cron alerts recurring', icon: Clock3, group: 'Pages', run: (n) => n('/schedules') },
-  { key: 'metrics', label: 'Metrics Catalog', keywords: 'certified business metrics', icon: BadgeCheck, group: 'Pages', run: (n) => n('/metrics') },
-  { key: 'templates', label: 'Query Templates', keywords: 'parameterized patterns', icon: FileCode2, group: 'Pages', run: (n) => n('/templates') },
-  { key: 'training', label: 'Model Training', keywords: 'fine-tune finetune', icon: BrainCircuit, group: 'Pages', run: (n) => n('/training') },
-  { key: 'help', label: 'Help', keywords: 'docs faq shortcuts', icon: HelpCircle, group: 'Pages', run: (n) => n('/help') },
+  {
+    key: 'show-onboarding',
+    label: 'Show onboarding checklist',
+    hint: 'Bring back the Getting Started guide',
+    keywords: 'onboarding tutorial getting started resurface undo dismiss checklist',
+    icon: ListChecks,
+    group: 'Actions',
+    // Audit #15: the checklist's dismiss action has no visible undo once its
+    // own short-lived undo strip times out. This command is the permanent,
+    // always-discoverable way back — it un-dismisses the same server-side
+    // flag the checklist reads, so it reappears immediately.
+    run: ({ queryClient }) => {
+      patchTutorialProgress({ dismissed: false }).then(() => {
+        queryClient.setQueryData(['tutorial-progress'], (old: any) => ({ ...old, dismissed_at: null }));
+      });
+    },
+  },
+  { key: 'home', label: 'Home', keywords: 'dashboard overview', icon: Home, group: 'Pages', run: ({ navigate }) => navigate('/') },
+  { key: 'query', label: 'Query', keywords: 'chat ask sql', icon: Database, group: 'Pages', run: ({ navigate }) => navigate('/query') },
+  { key: 'schema', label: 'Schema', keywords: 'connections databases upload ingest', icon: Upload, group: 'Pages', run: ({ navigate }) => navigate('/schema') },
+  { key: 'history', label: 'History', keywords: 'sessions past conversations', icon: Clock, group: 'Pages', run: ({ navigate }) => navigate('/history') },
+  { key: 'analytics', label: 'Analytics', keywords: 'usage accuracy performance', icon: BarChart3, group: 'Pages', run: ({ navigate }) => navigate('/analytics') },
+  { key: 'saved', label: 'Saved Queries', keywords: 'bookmarks starred sql', icon: Bookmark, group: 'Pages', run: ({ navigate }) => navigate('/saved') },
+  { key: 'dashboards', label: 'Dashboards', keywords: 'charts widgets', icon: LayoutDashboard, group: 'Pages', run: ({ navigate }) => navigate('/dashboards') },
+  { key: 'schedules', label: 'Scheduled Queries', keywords: 'cron alerts recurring', icon: Clock3, group: 'Pages', run: ({ navigate }) => navigate('/schedules') },
+  { key: 'metrics', label: 'Metrics Catalog', keywords: 'certified business metrics', icon: BadgeCheck, group: 'Pages', run: ({ navigate }) => navigate('/metrics') },
+  { key: 'templates', label: 'Query Templates', keywords: 'parameterized patterns', icon: FileCode2, group: 'Pages', run: ({ navigate }) => navigate('/templates') },
+  { key: 'training', label: 'Model Training', keywords: 'fine-tune finetune', icon: BrainCircuit, group: 'Pages', run: ({ navigate }) => navigate('/training') },
+  { key: 'help', label: 'Help', keywords: 'docs faq shortcuts', icon: HelpCircle, group: 'Pages', run: ({ navigate }) => navigate('/help') },
 ];
 
 function matches(cmd: Command, query: string): boolean {
@@ -88,6 +113,7 @@ function matches(cmd: Command, query: string): boolean {
 export default function CommandPalette() {
   const { open, setOpen } = useCommandPalette();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +144,7 @@ export default function CommandPalette() {
   const runAt = (index: number) => {
     const cmd = results[index];
     if (!cmd) return;
-    cmd.run(navigate);
+    cmd.run({ navigate, queryClient });
     setOpen(false);
   };
 
@@ -153,7 +179,7 @@ export default function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-popover/95 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] backdrop-blur-2xl animate-slide-up"
+        className="glass-strong shadow-depth-4 relative z-10 w-full max-w-lg overflow-hidden rounded-2xl animate-slide-up"
         onKeyDown={onKeyDown}
       >
         <div className="flex items-center gap-3 border-b border-border/70 px-4 py-3">

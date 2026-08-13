@@ -7,6 +7,7 @@ import { CommandPaletteProvider } from './context/CommandPaletteContext';
 import Layout from './components/Layout';
 import CommandPalette from './components/CommandPalette';
 import { Toaster } from './components/ui/toast';
+import { TooltipProvider } from './components/ui/tooltip';
 
 // Route-level code splitting — each page loads only when first visited,
 // keeping heavy dependencies (React Flow, recharts, syntax highlighter)
@@ -26,7 +27,10 @@ const HelpPage = lazy(() => import('./pages/HelpPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const SharedQueryView = lazy(() => import('./pages/SharedQueryView'));
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+// Google Sign-In is an optional integration — deployments without a client ID
+// configured must not crash or silently offer a button that always fails.
+const GOOGLE_CLIENT_ID_CONFIGURED = Boolean(GOOGLE_CLIENT_ID);
 
 /** Full-page fallback shown while a lazy route chunk loads. */
 function RouteFallback() {
@@ -95,21 +99,26 @@ function AppRoutes() {
 }
 
 function App() {
-  return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <ConnectionProvider>
-          <BrowserRouter>
-            <CommandPaletteProvider>
+  const app = (
+    <AuthProvider>
+      <ConnectionProvider>
+        <BrowserRouter>
+          <CommandPaletteProvider>
+            <TooltipProvider delayDuration={300} skipDelayDuration={200}>
               <AppRoutes />
               <CommandPalette />
               <Toaster />
-            </CommandPaletteProvider>
-          </BrowserRouter>
-        </ConnectionProvider>
-      </AuthProvider>
-    </GoogleOAuthProvider>
+            </TooltipProvider>
+          </CommandPaletteProvider>
+        </BrowserRouter>
+      </ConnectionProvider>
+    </AuthProvider>
   );
+
+  // Only mount the Google provider when a client ID is actually configured —
+  // passing an empty string would silently misconfigure the SDK.
+  if (!GOOGLE_CLIENT_ID_CONFIGURED) return app;
+  return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID as string}>{app}</GoogleOAuthProvider>;
 }
 
 export default App;

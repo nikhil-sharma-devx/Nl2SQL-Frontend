@@ -10,10 +10,11 @@ import { handleApiError, submitFeedback } from '../api/client';
 import ChatWindow from '../components/ChatWindow';
 import QueryInput from '../components/QueryInput';
 import QueryBuilder from '../components/QueryBuilder';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 // React Flow is heavy — load it only when the schema graph panel opens
-const SchemaGraph = lazy(() => import('../components/SchemaGraph'));
+const SchemaGraph = lazy(() => import('../components/SchemaGraphExplorer'));
 
 const QueryPage = () => {
   const {
@@ -88,8 +89,8 @@ const QueryPage = () => {
     <div className="grid h-full min-h-0 w-full grid-rows-[1fr_auto] gap-4 overflow-hidden">
       {/* Messages Area & Optional Graph & Query Builder */}
       <div className="relative min-h-0 h-full w-full overflow-hidden">
-        <div className={cn('absolute inset-0 flex gap-4', (showGraph || showQueryBuilder) ? 'flex-row' : 'flex-col')}>
-          <div className={cn('flex h-full flex-col transition-all duration-300', (showGraph || showQueryBuilder) ? 'w-1/2' : 'w-full')}>
+        <div className={cn('absolute inset-0 flex gap-4', (showGraph || showQueryBuilder) ? 'flex-col md:flex-row' : 'flex-col')}>
+          <div className="flex min-h-0 flex-1 flex-col transition-all duration-300">
             <ChatWindow
               messages={messages}
               pendingQuestion={pendingQuestion}
@@ -114,11 +115,11 @@ const QueryPage = () => {
           </div>
 
           {showGraph && (
-            <div className="flex h-full w-1/2 flex-col transition-all duration-300 animate-slide-up">
+            <div className="flex min-h-0 flex-1 flex-col transition-all duration-300 animate-slide-up">
               <Suspense
                 fallback={
-                  <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card/60">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-transparent motion-reduce:animate-none" />
+                  <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card/60 p-4">
+                    <Skeleton className="h-full w-full rounded-xl" />
                   </div>
                 }
               >
@@ -128,7 +129,7 @@ const QueryPage = () => {
           )}
 
           {showQueryBuilder && (
-            <div className="flex h-full w-1/2 flex-col transition-all duration-300 animate-slide-up">
+            <div className="flex min-h-0 flex-1 flex-col transition-all duration-300 animate-slide-up">
               <QueryBuilder
                 onClose={() => setShowQueryBuilder(false)}
                 onRunViaAi={(nlPrompt) => {

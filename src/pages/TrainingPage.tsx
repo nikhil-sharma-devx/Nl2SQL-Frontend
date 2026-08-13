@@ -19,6 +19,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 import { trainingAPI, type TrainingStats, type FineTuningJob } from '../api/client';
 
 const FINE_TUNABLE_MODELS = [
@@ -55,6 +57,7 @@ function fmtDate(epoch: number | null | undefined) {
 }
 
 export default function TrainingPage() {
+  const statsGridRef = useRevealOnScroll<HTMLDivElement>();
   const [stats, setStats] = useState<TrainingStats | null>(null);
   const [jobs, setJobs] = useState<FineTuningJob[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -181,22 +184,22 @@ export default function TrainingPage() {
       label: 'Ready to Train',
       value: stats?.unused_records ?? '—',
       icon: BrainCircuit,
-      color: 'text-violet-400',
-      bg: 'bg-violet-500/10',
+      color: 'text-violet-text',
+      bg: 'bg-violet-bg',
     },
     {
       label: 'Already Used',
       value: stats?.used_records ?? '—',
       icon: CheckCircle2,
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-500/10',
+      color: 'text-success-text',
+      bg: 'bg-success-bg',
     },
     {
       label: 'Avg Quality Score',
       value: stats ? `${(stats.avg_success_score * 100).toFixed(0)}%` : '—',
       icon: Zap,
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/10',
+      color: 'text-warning-text',
+      bg: 'bg-warning-bg',
     },
   ];
 
@@ -223,7 +226,7 @@ export default function TrainingPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div ref={statsGridRef} className="reveal reveal-stagger grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="card-lift">
             <CardContent className="p-4">
@@ -233,7 +236,11 @@ export default function TrainingPage() {
                 </div>
                 <div>
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
-                  <p className="text-xl font-bold text-foreground">{loadingStats ? '…' : value}</p>
+                  {loadingStats ? (
+                    <Skeleton className="mt-1 h-6 w-12 rounded-md" />
+                  ) : (
+                    <p className="text-xl font-bold text-foreground">{value}</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -262,9 +269,9 @@ export default function TrainingPage() {
 
       {/* Requirement callout */}
       {!loadingStats && !canStart && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-          <p className="text-sm text-amber-200/90">
+        <div className="flex items-start gap-3 rounded-xl border border-warning-border bg-warning-bg p-4">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning-text" />
+          <p className="text-sm text-warning-text/90">
             You need at least <strong>10 training records</strong> to export or fine-tune. Currently you have{' '}
             <strong>{stats?.unused_records ?? 0}</strong>. Keep using the app — every successful query is collected automatically.
           </p>
@@ -273,15 +280,15 @@ export default function TrainingPage() {
 
       {/* Feedback messages */}
       {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
+        <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
       {success && (
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-          <p className="text-sm text-emerald-200/90">{success}</p>
+        <div role="status" aria-live="polite" className="flex items-start gap-3 rounded-xl border border-success-border bg-success-bg p-4">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-text" />
+          <p className="text-sm text-success-text/90">{success}</p>
         </div>
       )}
 
@@ -335,7 +342,7 @@ export default function TrainingPage() {
         <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <BrainCircuit className="h-4 w-4 text-violet-400" />
+              <BrainCircuit className="h-4 w-4 text-violet-text" />
               Cloud Fine-Tuning
             </CardTitle>
             <Badge variant="destructive" className="text-[10px] font-bold uppercase tracking-wider">Paid API required</Badge>
@@ -347,16 +354,16 @@ export default function TrainingPage() {
         </CardHeader>
         <CardContent className="space-y-4 px-4 pb-4">
           {/* Paid notice */}
-          <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-            <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-            <div className="text-xs text-amber-200/90 space-y-1">
+          <div className="flex items-start gap-3 rounded-lg border border-warning-border bg-warning-bg p-3">
+            <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-warning-text" />
+            <div className="text-xs text-warning-text/90 space-y-1">
               <p>
                 Together AI fine-tuning is a <strong>paid service</strong>. Costs depend on model size and token count.
-                See pricing at <span className="font-medium text-amber-200">api.together.xyz/pricing</span>.
+                See pricing at <span className="font-medium text-warning-text">api.together.xyz/pricing</span>.
               </p>
               <p>
                 Add your Together AI key in{' '}
-                <strong className="text-amber-100">Profile → API Keys</strong>{' '}
+                <strong className="text-warning-text">Profile → API Keys</strong>{' '}
                 (click your avatar in the bottom-left). Your key is stored encrypted and used automatically.
               </p>
             </div>
@@ -374,7 +381,7 @@ export default function TrainingPage() {
                   onClick={() => setSelectedModel(m.value)}
                   className={`flex flex-col rounded-lg border px-3 py-2 text-left transition-all ${
                     selectedModel === m.value
-                      ? 'border-violet-500/60 bg-violet-500/10 text-foreground'
+                      ? 'border-violet-border bg-violet-bg text-foreground'
                       : 'border-border bg-background/40 text-muted-foreground hover:border-border/80 hover:text-foreground'
                   }`}
                 >
@@ -396,10 +403,11 @@ export default function TrainingPage() {
             </button>
             {showAdvanced && (
               <div className="mt-3">
-                <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <label htmlFor="training-max-records" className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                   Max Records
                 </label>
                 <input
+                  id="training-max-records"
                   type="number"
                   min={10}
                   max={10000}
@@ -439,7 +447,7 @@ export default function TrainingPage() {
             </Button>
 
             {preparedPath && (
-              <span className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[11px] text-emerald-300">
+              <span className="flex items-center gap-1.5 rounded-lg border border-success-border bg-success-bg px-2.5 py-1.5 font-mono text-[11px] text-success-text">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 File ready
               </span>
@@ -467,7 +475,9 @@ export default function TrainingPage() {
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {loadingJobs ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading jobs…</div>
+            <div className="space-y-2 py-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-lg" />)}
+            </div>
           ) : jobs.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">No fine-tuning jobs yet.</div>
           ) : (
@@ -546,19 +556,19 @@ export default function TrainingPage() {
         <CardContent className="px-4 pb-4">
           <ol className="space-y-2 text-sm text-foreground/80">
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_rgba(16,185,129,0.3)]">1</span>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">1</span>
               <span><strong className="text-foreground">Data collection</strong> — every successful query you run is automatically saved to the training dataset.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_rgba(16,185,129,0.3)]">2</span>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">2</span>
               <span><strong className="text-foreground">Download (free)</strong> — export your data as a JSONL file and use it anywhere: Google Colab, Hugging Face AutoTrain, or local fine-tuning with Unsloth.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_rgba(16,185,129,0.3)]">3</span>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">3</span>
               <span><strong className="text-foreground">Cloud fine-tune (paid)</strong> — if you have a Together AI or OpenAI API key, you can submit the job directly from here. Together AI charges per token trained.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_rgba(16,185,129,0.3)]">4</span>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">4</span>
               <span><strong className="text-foreground">Deploy</strong> — once a cloud job succeeds, hot-swap the running model to your fine-tuned version with no server restart.</span>
             </li>
           </ol>

@@ -5,9 +5,11 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 import ResultTable from '../components/ResultTable';
 import { Star, Trash2, Play, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 import type { QueryResponse } from '../types/query.types';
 
 interface SavedQuery {
@@ -49,6 +51,7 @@ function toQueryResponse(exec: ExecuteResponse, sql: string, dialect: string): Q
 
 export default function SavedQueriesPage() {
   const queryClient = useQueryClient();
+  const listRef = useRevealOnScroll<HTMLDivElement>();
   const [search, setSearch] = useState('');
   const [starredOnly, setStarredOnly] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -156,6 +159,7 @@ export default function SavedQueriesPage() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
           placeholder="Search queries…"
+          aria-label="Search saved queries"
           className="max-w-xs"
         />
         <button
@@ -163,11 +167,11 @@ export default function SavedQueriesPage() {
           className={cn(
             'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors',
             starredOnly
-              ? 'border-amber-400/50 bg-amber-400/10 text-amber-400'
+              ? 'border-warning-border bg-warning-bg text-warning-text'
               : 'border-border text-muted-foreground hover:border-primary/40',
           )}
         >
-          <Star className={cn('h-3.5 w-3.5', starredOnly && 'fill-amber-400')} />
+          <Star className={cn('h-3.5 w-3.5', starredOnly && 'fill-warning-text')} />
           Starred only
         </button>
         <span className="text-sm text-muted-foreground">{total} total</span>
@@ -179,17 +183,13 @@ export default function SavedQueriesPage() {
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
         </div>
       ) : (data?.items.length ?? 0) === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10">
-            <Star className="h-7 w-7 text-amber-400" />
-          </div>
-          <p className="font-medium text-foreground">No saved queries yet</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">
-            Star a query from the chat to save it here.
-          </p>
-        </div>
+        <EmptyState
+          icon={Star}
+          title="No saved queries yet"
+          description="Star a query from the chat to save it here."
+        />
       ) : (
-        <div className="space-y-3">
+        <div ref={listRef} className="reveal reveal-stagger space-y-3">
           {data?.items.map(q => {
             const isRunning = runningIds.has(q.id);
             const result = runResults[q.id];
@@ -213,10 +213,10 @@ export default function SavedQueriesPage() {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleStar(q)}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:text-amber-400 transition-colors"
+                        className="rounded-lg p-1.5 text-muted-foreground hover:text-warning-text transition-colors"
                         title={q.starred ? 'Unstar' : 'Star'}
                       >
-                        <Star className={cn('h-4 w-4', q.starred && 'fill-amber-400 text-amber-400')} />
+                        <Star className={cn('h-4 w-4', q.starred && 'fill-warning-text text-warning-text')} />
                       </button>
                       <button
                         onClick={() => handleRun(q)}

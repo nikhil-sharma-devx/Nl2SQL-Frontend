@@ -73,6 +73,9 @@ export interface paths {
         /**
          * Sign in or register via Google OAuth
          * @description Verify a Google ID token and login/register the user.
+         *
+         *     ``verify_google_token`` raises ``AuthenticationError`` on failure, which
+         *     the global error handler maps to 401 — no local try/except needed.
          */
         post: operations["google_auth_api_v1_auth_google_post"];
         delete?: never;
@@ -729,6 +732,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/config/rate-limit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get rate limiter state
+         * @description Returns whether SlowAPI rate limiting is currently active.
+         */
+        get: operations["get_rate_limit_config_api_v1_config_rate_limit_get"];
+        /**
+         * Toggle rate limiting at runtime
+         * @description Enable or disable SlowAPI rate limiting without a restart (e.g. for load testing or an operational emergency).
+         */
+        put: operations["update_rate_limit_config_api_v1_config_rate_limit_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/connections": {
         parameters: {
             query?: never;
@@ -815,7 +842,7 @@ export interface paths {
         post?: never;
         /**
          * Clear query history (deprecated table)
-         * @description Removes all entries from the legacy query_history table. Chat sessions and messages are preserved.
+         * @description Removes all entries from the legacy query_history table. Chat sessions and messages are preserved. Admin-only: the legacy table has no per-user column, so clearing it affects every user. Regular users should use POST /history/clear.
          */
         delete: operations["clear_history_api_v1_history_delete"];
         options?: never;
@@ -1127,7 +1154,7 @@ export interface paths {
         };
         /**
          * Debug Analytics
-         * @description Debug endpoint to check analytics database status. Non-production only.
+         * @description Debug endpoint to check analytics database status. Admin-only, non-production only.
          */
         get: operations["debug_analytics_api_v1_analytics_debug_get"];
         put?: never;
@@ -1147,7 +1174,7 @@ export interface paths {
         };
         /**
          * List feedback records
-         * @description Retrieve a list of user feedback submissions.
+         * @description Retrieve a list of user feedback submissions. Admin-only: feedback records are not attributed to a user, so this is a platform-wide view.
          */
         get: operations["list_feedback_api_v1_feedback_get"];
         put?: never;
@@ -1171,7 +1198,7 @@ export interface paths {
         };
         /**
          * Get Training Stats
-         * @description Get training data statistics.
+         * @description Get training data statistics. Admin-only: the training corpus is global, not per-user.
          */
         get: operations["get_training_stats_api_v1_training_stats_get"];
         put?: never;
@@ -1191,7 +1218,7 @@ export interface paths {
         };
         /**
          * Export Training Data
-         * @description Export training data for fine-tuning.
+         * @description Export training data for fine-tuning. Admin-only: the training corpus is global, not per-user.
          */
         get: operations["export_training_data_api_v1_training_export_get"];
         put?: never;
@@ -1211,7 +1238,7 @@ export interface paths {
         };
         /**
          * Download Training Data
-         * @description Download training data as a file attachment.
+         * @description Download training data as a file attachment. Admin-only: the training corpus is global, not per-user.
          */
         get: operations["download_training_data_api_v1_training_download_get"];
         put?: never;
@@ -1280,7 +1307,7 @@ export interface paths {
         put?: never;
         /**
          * Start Fine Tuning
-         * @description Start a fine-tuning job.
+         * @description Start a fine-tuning job. Admin-only: consumes platform-wide fine-tuning budget/quota.
          *
          *     Args:
          *         model: Base model to fine-tune.
@@ -1363,7 +1390,8 @@ export interface paths {
          * @description Deploy a fine-tuned model and hot-swap the running LLM provider.
          *
          *     Validates the model exists, then switches the application to use it
-         *     immediately without a server restart.
+         *     immediately without a server restart. Admin-only: this hot-swaps the
+         *     model for every user on the platform.
          *
          *     Args:
          *         model_id: The fine-tuned model ID returned by Together AI (e.g. "ft-abc123-llama-3-1").
@@ -3142,6 +3170,17 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** FavoritedTableListResponse */
+        FavoritedTableListResponse: {
+            /** Items */
+            items: components["schemas"]["FavoritedTableOut"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** FavoritedTableOut */
         FavoritedTableOut: {
             /** Id */
@@ -3400,6 +3439,13 @@ export interface components {
         /**
          * LLMConfigUpdate
          * @description Request body for updating LLM configuration.
+         *
+         *     ``provider`` stays a plain ``str`` (not a stricter type) so the route's
+         *     existing case-insensitive validation keeps returning its documented 400
+         *     with the available-providers list, rather than a generic 422. The actual
+         *     safety net against an unrecognized provider slipping through to a
+         *     running LLM client lives in ``llm_factory.create_llm_provider``, which
+         *     now raises instead of silently defaulting to Groq.
          */
         LLMConfigUpdate: {
             /**
@@ -4070,6 +4116,28 @@ export interface components {
             /** Adaptive Top K Max */
             adaptive_top_k_max?: number | null;
         };
+        /**
+         * RateLimitConfigResponse
+         * @description Current rate-limiter state (runtime-adjustable).
+         */
+        RateLimitConfigResponse: {
+            /**
+             * Enabled
+             * @description Whether SlowAPI rate limiting is active.
+             */
+            enabled: boolean;
+        };
+        /**
+         * RateLimitConfigUpdate
+         * @description Request body for toggling the rate limiter at runtime.
+         */
+        RateLimitConfigUpdate: {
+            /**
+             * Enabled
+             * @description Set false to disable rate limiting (e.g. load testing, an incident).
+             */
+            enabled: boolean;
+        };
         /** ReadinessResponse */
         ReadinessResponse: {
             /** Status */
@@ -4325,6 +4393,12 @@ export interface components {
         ScheduleListResponse: {
             /** Items */
             items: components["schemas"]["ScheduleOut"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
         };
         /** ScheduleOut */
         ScheduleOut: {
@@ -4919,6 +4993,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Is Admin
+             * @default false
+             */
+            is_admin: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -6226,6 +6305,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RagConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rate_limit_config_api_v1_config_rate_limit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitConfigResponse"];
+                };
+            };
+        };
+    };
+    update_rate_limit_config_api_v1_config_rate_limit_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RateLimitConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitConfigResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8361,7 +8493,10 @@ export interface operations {
     };
     list_favorited_tables_api_v1_favorited_tables_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8374,7 +8509,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FavoritedTableOut"][];
+                    "application/json": components["schemas"]["FavoritedTableListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -9435,6 +9579,8 @@ export interface operations {
         parameters: {
             query?: {
                 connection_id?: string | null;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;

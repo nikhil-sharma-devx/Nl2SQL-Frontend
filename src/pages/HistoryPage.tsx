@@ -30,19 +30,22 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 
 const HistoryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
-  const isLightTheme = theme === 'light' || theme === 'claude';
+  const isLightTheme = theme === 'parchment' || theme === 'sienna';
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [limit, setLimit] = useState(50);
+  const sessionsListRef = useRevealOnScroll<HTMLDivElement>();
 
   useEffect(() => {
     const state = location.state as { selectedSessionId?: string };
@@ -157,8 +160,8 @@ const HistoryPage = () => {
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10">
-              <AlertTriangle className="h-6 w-6 text-rose-400" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-destructive-border bg-destructive-bg">
+              <AlertTriangle className="h-6 w-6 text-destructive-text" />
             </div>
             <div>
               <DialogTitle>Delete Session</DialogTitle>
@@ -209,8 +212,8 @@ const HistoryPage = () => {
             <Card key={msg.id} className="overflow-hidden">
               <button onClick={() => toggleExpandMessage(msg.id)} className="group flex w-full items-center justify-between px-5 py-4 transition-colors hover:bg-foreground/[0.03]">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10">
-                    <MessageSquare className="h-5 w-5 text-cyan-400" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-info-border bg-info-bg">
+                    <MessageSquare className="h-5 w-5 text-info-text" />
                   </div>
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-base font-medium text-foreground">{msg.question}</p>
@@ -231,7 +234,7 @@ const HistoryPage = () => {
                     {msg.response.sql && (
                       <div>
                         <div className="mb-3 flex items-center gap-2">
-                          <Database className="h-4 w-4 text-cyan-400" />
+                          <Database className="h-4 w-4 text-info-text" />
                           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Generated SQL</span>
                         </div>
                         <div className="overflow-hidden rounded-xl border border-border">
@@ -245,8 +248,8 @@ const HistoryPage = () => {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="rounded-xl border border-border bg-background/60 p-4">
                         <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Dialect</p>
-                        <p className="mt-1 flex items-center gap-2 text-sm font-medium capitalize text-violet-300">
-                          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                        <p className="mt-1 flex items-center gap-2 text-sm font-medium capitalize text-violet-text">
+                          <span className="h-1.5 w-1.5 rounded-full bg-violet-text" />
                           {msg.response.dialect}
                         </p>
                       </div>
@@ -258,7 +261,7 @@ const HistoryPage = () => {
                         <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Cached</p>
                         <p className="mt-1 text-sm font-medium">
                           {msg.response.cached ? (
-                            <span className="flex items-center gap-1 text-violet-400"><Check className="h-4 w-4" /> Yes</span>
+                            <span className="flex items-center gap-1 text-violet-text"><Check className="h-4 w-4" /> Yes</span>
                           ) : (
                             <span className="flex items-center gap-1 text-muted-foreground/80"><X className="h-4 w-4" /> No</span>
                           )}
@@ -278,11 +281,11 @@ const HistoryPage = () => {
                     )}
 
                     {!msg.response.is_valid && (msg.response.validation_errors?.length ?? 0) > 0 && (
-                      <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
-                        <p className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-rose-300"><AlertTriangle className="h-3.5 w-3.5" /> Validation Errors</p>
+                      <div className="rounded-xl border border-destructive-border bg-destructive-bg p-4">
+                        <p className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive-text"><AlertTriangle className="h-3.5 w-3.5" /> Validation Errors</p>
                         <ul className="space-y-1">
                           {(msg.response.validation_errors ?? []).map((error, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-rose-300/90"><span className="text-rose-500">•</span>{error}</li>
+                            <li key={idx} className="flex items-start gap-2 text-sm text-destructive-text/90"><span className="text-destructive-text">•</span>{error}</li>
                           ))}
                         </ul>
                       </div>
@@ -308,7 +311,7 @@ const HistoryPage = () => {
                                   {Object.values(row).map((value, vIdx) => (
                                     <td key={vIdx} className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
                                       {value !== null && value !== undefined ? (
-                                        <span className={typeof value === 'number' ? 'text-violet-300' : 'text-primary/90'}>{String(value)}</span>
+                                        <span className={typeof value === 'number' ? 'text-violet-text' : 'text-primary/90'}>{String(value)}</span>
                                       ) : (
                                         <span className="italic text-muted-foreground/55">NULL</span>
                                       )}
@@ -355,9 +358,9 @@ const HistoryPage = () => {
       </Card>
 
       {clearMutation.isError && (
-        <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
-          <AlertCircle className="h-5 w-5 text-rose-400" />
-          <span className="text-rose-300">{handleApiError(clearMutation.error)}</span>
+        <div role="alert" className="flex items-center gap-2 rounded-xl border border-destructive-border bg-destructive-bg p-4">
+          <AlertCircle className="h-5 w-5 text-destructive-text" />
+          <span className="text-destructive-text">{handleApiError(clearMutation.error)}</span>
         </div>
       )}
 
@@ -377,26 +380,24 @@ const HistoryPage = () => {
           ))}
         </div>
       ) : sessions.length === 0 ? (
-        <Card className="py-20 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-500/35 bg-cyan-500/12 shadow-[0_0_40px_rgba(34,211,238,0.3),0_0_14px_rgba(34,211,238,0.18)] glow-cyan">
-            <Clock className="h-8 w-8 text-cyan-400" />
-          </div>
-          <h3 className="mb-3 font-display text-xl font-semibold tracking-tight text-foreground">No Chat History Yet</h3>
-          <p className="text-muted-foreground">Your chat sessions will appear here once you start asking questions.</p>
-        </Card>
+        <EmptyState
+          icon={Clock}
+          title="No Chat History Yet"
+          description="Your chat sessions will appear here once you start asking questions."
+        />
       ) : (
-        <div className="space-y-3">
+        <div ref={sessionsListRef} className="reveal reveal-stagger space-y-3">
           {sessions.map((session) => (
             <Card key={session.id} className="card-lift group overflow-hidden transition-all hover:border-primary/25">
               <div className="flex items-center">
                 <button onClick={() => handleSessionClick(session)} className="flex-1 p-5 text-left transition-colors hover:bg-foreground/[0.03]">
                   <div className="flex items-center justify-between">
                     <div className="flex min-w-0 flex-1 items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-cyan-500/20 bg-cyan-500/10 transition-all group-hover:shadow-[0_0_15px_rgba(34,211,238,0.25)]">
-                        <MessageSquare className="h-5 w-5 text-cyan-400" />
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--chart-2)_20%,transparent)] bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] transition-all group-hover:shadow-[0_0_15px_color-mix(in_srgb,var(--chart-2)_25%,transparent)]">
+                        <MessageSquare className="h-5 w-5 text-[var(--chart-2)]" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-lg font-medium text-foreground transition-colors group-hover:text-cyan-300">{session.title}</h3>
+                        <h3 className="truncate text-lg font-medium text-foreground transition-colors group-hover:text-info-text">{session.title}</h3>
                         <p className="mt-1 font-mono text-sm text-muted-foreground/80">
                           {session.message_count} message{session.message_count !== 1 ? 's' : ''}
                           <span className="mx-1.5 text-muted-foreground/55">·</span>
@@ -404,7 +405,7 @@ const HistoryPage = () => {
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="ml-4 h-5 w-5 text-muted-foreground/55 transition-all group-hover:translate-x-1 group-hover:text-cyan-400" />
+                    <ChevronRight className="ml-4 h-5 w-5 text-muted-foreground/55 transition-all group-hover:translate-x-1 group-hover:text-info-text" />
                   </div>
                 </button>
                 <button
@@ -412,7 +413,7 @@ const HistoryPage = () => {
                     e.stopPropagation();
                     setSessionToDelete(session.id);
                   }}
-                  className="border-l border-border p-5 text-muted-foreground/80 transition-colors hover:bg-rose-500/10 hover:text-rose-400"
+                  className="border-l border-border p-5 text-muted-foreground/80 transition-colors hover:bg-destructive-bg hover:text-destructive-text"
                   title="Delete session"
                 >
                   <Trash2 className="h-5 w-5" />
@@ -443,13 +444,13 @@ const HistoryPage = () => {
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10">
-                <AlertTriangle className="h-6 w-6 text-rose-400" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-destructive-border bg-destructive-bg">
+                <AlertTriangle className="h-6 w-6 text-destructive-text" />
               </div>
               <div>
                 <DialogTitle>Clear All Sessions</DialogTitle>
                 <DialogDescription>
-                  This will permanently delete all <strong className="text-rose-300">{sessions.length}</strong> chat sessions and their messages.
+                  This will permanently delete all <strong className="text-destructive-text">{sessions.length}</strong> chat sessions and their messages.
                 </DialogDescription>
               </div>
             </div>

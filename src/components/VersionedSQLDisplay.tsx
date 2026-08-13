@@ -3,10 +3,19 @@
  * (Logic unchanged; restyled.)
  */
 import { useState, useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ChevronLeft, ChevronRight, Pencil, Play, Check, X, Code2, Copy } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { standardTransition } from '@/motion/variants';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
+const slideVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
+  center: { x: 0, opacity: 1, transition: standardTransition },
+  exit: (direction: number) => ({ x: direction > 0 ? -24 : 24, opacity: 0, transition: { duration: 0.15 } }),
+};
 
 export interface SQLVersion {
   version: number;
@@ -24,12 +33,14 @@ interface VersionedSQLDisplayProps {
 
 const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDisplayProps) => {
   const { theme } = useTheme();
-  const isLightTheme = theme === 'light' || theme === 'claude';
+  const isLightTheme = theme === 'parchment' || theme === 'sienna';
   const highlighterStyle = isLightTheme ? oneLight : atomDark;
   const [currentIndex, setCurrentIndex] = useState(versions.length - 1);
+  const [direction, setDirection] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [editedSql, setEditedSql] = useState('');
   const [copied, setCopied] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     setCurrentIndex(versions.length - 1);
@@ -48,6 +59,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
+      setDirection(-1);
       setCurrentIndex(currentIndex - 1);
       setIsEditing(false);
     }
@@ -55,6 +67,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
 
   const handleNext = () => {
     if (currentIndex < totalVersions - 1) {
+      setDirection(1);
       setCurrentIndex(currentIndex + 1);
       setIsEditing(false);
     }
@@ -84,38 +97,50 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
         <div className="flex items-center gap-1.5">
           {totalVersions > 1 && (
             <>
-              <button
-                onClick={handlePrevious}
-                disabled={currentIndex === 0}
-                className="rounded-md p-1 text-muted-foreground transition-colors enabled:hover:bg-foreground/10 enabled:hover:text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/40"
-                title="Previous version"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handlePrevious}
+                    disabled={currentIndex === 0}
+                    className="rounded-md p-1 text-muted-foreground transition-colors enabled:hover:bg-foreground/10 enabled:hover:text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/40"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Previous version</TooltipContent>
+              </Tooltip>
               <span className="rounded-md border border-border bg-background/70 px-2 py-0.5 font-mono text-[11px] text-foreground/85">
                 v{currentIndex + 1}/{totalVersions}
               </span>
-              <button
-                onClick={handleNext}
-                disabled={currentIndex === totalVersions - 1}
-                className="rounded-md p-1 text-muted-foreground transition-colors enabled:hover:bg-foreground/10 enabled:hover:text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/40"
-                title="Next version"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleNext}
+                    disabled={currentIndex === totalVersions - 1}
+                    className="rounded-md p-1 text-muted-foreground transition-colors enabled:hover:bg-foreground/10 enabled:hover:text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground/40"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Next version</TooltipContent>
+              </Tooltip>
             </>
           )}
           {currentVersion.isOriginal && totalVersions > 1 && (
             <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] text-muted-foreground">Original</span>
           )}
 
-          <button
-            onClick={handleCopy}
-            title="Copy SQL"
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleCopy}
+                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{copied ? 'Copied!' : 'Copy SQL'}</TooltipContent>
+          </Tooltip>
 
           <div className="ml-1">
             {isEditing ? (
@@ -132,13 +157,17 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
                     <><Play className="h-3.5 w-3.5" /> Re-Run</>
                   )}
                 </button>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
-                  title="Cancel editing"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Cancel editing</TooltipContent>
+                </Tooltip>
               </div>
             ) : (
               <button
@@ -154,7 +183,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
       </div>
 
       {/* SQL Code Display */}
-      <div className="relative">
+      <div className="relative overflow-hidden">
         {isEditing ? (
           <textarea
             value={editedSql}
@@ -163,13 +192,24 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
             spellCheck={false}
           />
         ) : (
-          <SyntaxHighlighter
-            language="sql"
-            style={highlighterStyle}
-            customStyle={{ margin: 0, padding: '1rem', fontSize: '0.85rem', borderRadius: 0, background: 'transparent' }}
-          >
-            {currentVersion.sql}
-          </SyntaxHighlighter>
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={currentIndex}
+              custom={direction}
+              variants={reducedMotion ? undefined : slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
+              <SyntaxHighlighter
+                language="sql"
+                style={highlighterStyle}
+                customStyle={{ margin: 0, padding: '1rem', fontSize: '0.85rem', borderRadius: 0, background: 'transparent' }}
+              >
+                {currentVersion.sql}
+              </SyntaxHighlighter>
+            </motion.div>
+          </AnimatePresence>
         )}
       </div>
 
@@ -220,12 +260,13 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
                 <button
                   key={v.version}
                   onClick={() => {
+                    setDirection(idx > currentIndex ? 1 : -1);
                     setCurrentIndex(idx);
                     setIsEditing(false);
                   }}
                   className={`h-1.5 flex-1 rounded-full transition-all ${
                     idx === currentIndex
-                      ? 'bg-primary shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                      ? 'bg-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_60%,transparent)]'
                       : idx < currentIndex
                       ? 'bg-primary/40'
                       : 'bg-foreground/10'

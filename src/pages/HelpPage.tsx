@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useLenisScroll } from '@/hooks/useLenisScroll';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -431,7 +432,7 @@ function AccordionItem({ item }: { item: FaqItem }) {
 }
 
 function SectionCard({ section, isOpen, onToggle }: { section: Section; isOpen: boolean; onToggle: () => void }) {
-  const Icon = section.icon;
+  const Icon = section.icon as React.ComponentType<{ className?: string }>;
   return (
     <Card className="overflow-hidden">
       <button
@@ -499,6 +500,7 @@ function SectionCard({ section, isOpen, onToggle }: { section: Section; isOpen: 
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function HelpPage() {
+  const { wrapperRef, contentRef, scrollTo } = useLenisScroll<HTMLDivElement>();
   const [search, setSearch] = useState('');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['getting-started']));
 
@@ -521,10 +523,11 @@ export default function HelpPage() {
     : SECTIONS;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 pb-10">
+    <div ref={wrapperRef} className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
+    <div ref={contentRef} className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       {/* Hero */}
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 shadow-[0_0_36px_rgba(16,185,129,0.25)]">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 shadow-[0_0_36px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
           <HelpCircle className="h-7 w-7 text-primary" />
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-gradient-hero">Help &amp; Documentation</h1>
@@ -533,8 +536,10 @@ export default function HelpPage() {
 
       {/* Search */}
       <div className="relative">
+        <label htmlFor="help-search" className="sr-only">Search help topics</label>
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
         <input
+          id="help-search"
           type="text"
           value={search}
           onChange={(e) => {
@@ -562,7 +567,7 @@ export default function HelpPage() {
               onClick={() => {
                 setOpenSections((prev) => new Set([...prev, id]));
                 setTimeout(() => {
-                  document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  scrollTo(`#section-${id}`);
                 }, 50);
               }}
               className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card/60 p-4 text-center text-xs font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/8 hover:text-foreground card-lift"
@@ -641,6 +646,7 @@ export default function HelpPage() {
           <span className="font-medium text-foreground">README</span> or open an issue in the project repository.
         </p>
       </div>
+    </div>
     </div>
   );
 }

@@ -70,9 +70,21 @@ export function dismissToast(id: number): void {
 }
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
-  info: 'border-border bg-card text-foreground',
-  success: 'border-primary/40 bg-card text-foreground',
-  error: 'border-destructive-border bg-destructive-bg text-destructive-text',
+  info: 'border-border',
+  success: 'border-primary/35',
+  error: 'border-destructive-border',
+};
+
+const VARIANT_ICON_COLOR: Record<ToastVariant, string> = {
+  info: 'text-info-text',
+  success: 'text-primary',
+  error: 'text-destructive-text',
+};
+
+const VARIANT_BAR_COLOR: Record<ToastVariant, string> = {
+  info: 'bg-info-text',
+  success: 'bg-primary',
+  error: 'bg-destructive',
 };
 
 const VARIANT_ICON: Record<ToastVariant, typeof Info> = {
@@ -105,22 +117,29 @@ export function Toaster() {
         return (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-start gap-2.5 rounded-xl border p-3 shadow-lg backdrop-blur-md ${VARIANT_STYLES[t.variant]}`}
+            className={`glass-strong pointer-events-auto relative animate-slide-up overflow-hidden rounded-xl border p-3 pb-4 text-foreground ${VARIANT_STYLES[t.variant]}`}
           >
-            <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium leading-snug">{t.title}</p>
-              {t.description && (
-                <p className="mt-0.5 break-words text-xs opacity-80">{t.description}</p>
-              )}
+            <div className="flex items-start gap-2.5">
+              <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${VARIANT_ICON_COLOR[t.variant]}`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-snug">{t.title}</p>
+                {t.description && (
+                  <p className="mt-0.5 break-words text-xs text-muted-foreground">{t.description}</p>
+                )}
+              </div>
+              <button
+                onClick={() => dismissToast(t.id)}
+                aria-label="Dismiss notification"
+                className="rounded p-0.5 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <button
-              onClick={() => dismissToast(t.id)}
-              aria-label="Dismiss notification"
-              className="rounded p-0.5 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            <div
+              className={`absolute inset-x-0 bottom-0 h-0.5 origin-left ${VARIANT_BAR_COLOR[t.variant]}`}
+              style={{ animation: `toastShrink ${t.durationMs}ms linear forwards` }}
+              aria-hidden="true"
+            />
           </div>
         );
       })}

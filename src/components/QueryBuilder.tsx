@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { SlidersHorizontal, X, Plus, Trash2, Play, Sparkles, AlertTriangle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getVisualizeSchema } from '../api/client';
 import { cn } from '@/lib/utils';
 
@@ -352,17 +353,23 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
 
   if (loading) {
     return (
-      <div className="flex h-full w-full items-center justify-center rounded-2xl border border-border bg-card/60 p-8 text-muted-foreground backdrop-blur-xl">
-        <span className="flex items-center gap-2">
-          <ChevronDown className="h-5 w-5 animate-spin" /> Loading schema metadata...
-        </span>
+      <div className="flex h-full w-full flex-col gap-4 rounded-2xl glass-panel p-6">
+        <div className="flex items-center gap-2.5">
+          <SlidersHorizontal className="h-4 w-4 text-muted-foreground/50" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-14 w-full rounded-xl" />
+          <Skeleton className="h-14 w-full rounded-xl" />
+          <Skeleton className="h-14 w-full rounded-xl" />
+        </div>
       </div>
     );
   }
 
   if (error || !schema) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card/60 p-8 text-destructive-text backdrop-blur-xl">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl glass-panel p-8 text-destructive-text">
         <AlertTriangle className="h-8 w-8" />
         <p className="text-sm font-semibold">{error || 'Failed to load schema'}</p>
         <Button onClick={onClose} variant="outline" size="sm">Close Panel</Button>
@@ -374,11 +381,11 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
   const canRunQuery = !!primaryTable && selectedColumns.length > 0;
 
   return (
-    <div className="flex h-full w-full flex-col rounded-2xl border border-border bg-card/70 shadow-2xl backdrop-blur-xl overflow-hidden animate-slide-up">
+    <div className="@container flex h-full w-full flex-col rounded-2xl glass-panel overflow-hidden animate-slide-up">
       {/* Drawer Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-foreground/[0.02] px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <SlidersHorizontal className="h-4 w-4 text-violet-400" />
+          <SlidersHorizontal className="h-4 w-4 text-info-text" />
           <h3 className="font-display text-base font-bold tracking-tight text-foreground">Visual Query Builder</h3>
         </div>
         <button
@@ -418,12 +425,12 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                 >
                   {step.id < currentStep ? <Check className="h-2.5 w-2.5" /> : step.id}
                 </span>
-                <span className="hidden sm:inline font-mono text-[9px] font-bold uppercase tracking-wider">
+                <span className="hidden @[480px]:inline font-mono text-[9px] font-bold uppercase tracking-wider">
                   {step.label}
                 </span>
               </button>
               {idx < STEPS.length - 1 && (
-                <div className={cn('mx-1 h-px w-4 sm:w-6', step.id < currentStep ? 'bg-primary/30' : 'bg-border')} />
+                <div className={cn('mx-1 h-px w-4 @[480px]:w-6', step.id < currentStep ? 'bg-primary/30' : 'bg-border')} />
               )}
             </div>
           ))}
@@ -448,6 +455,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
               <input
                 type="text"
+                aria-label="Search tables"
                 placeholder="Search tables…"
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
@@ -511,6 +519,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
                   <input
                     type="text"
+                    aria-label="Search joinable tables"
                     placeholder="Search joinable tables…"
                     value={joinSearch}
                     onChange={(e) => setJoinSearch(e.target.value)}
@@ -535,16 +544,16 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                             className={cn(
                               'flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-all',
                               isJoined
-                                ? 'border-violet-500/40 bg-violet-500/[0.06] text-foreground'
+                                ? 'border-primary/40 bg-primary/[0.06] text-foreground'
                                 : 'border-border bg-background/40 text-foreground/70 hover:bg-foreground/[0.02] hover:text-foreground'
                             )}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div className={cn(
                                 'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                                isJoined ? 'border-violet-500 bg-violet-500' : 'border-border bg-background'
+                                isJoined ? 'border-primary bg-primary' : 'border-border bg-background'
                               )}>
-                                {isJoined && <Check className="h-2.5 w-2.5 text-white" />}
+                                {isJoined && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
                               </div>
                               <span className="text-sm font-semibold break-all leading-snug">{tableName}</span>
                             </div>
@@ -591,7 +600,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                         <Badge className="bg-primary/10 border-primary/20 text-primary text-[8px] font-mono px-1">Primary</Badge>
                       )}
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2 @[480px]:grid-cols-2">
                       {tableObj.columns.map((col) => {
                         const isSelected = !!selectedColumns.find((c) => c.table === tableName && c.column === col.name);
                         const currentSelection = selectedColumns.find((c) => c.table === tableName && c.column === col.name);
@@ -672,7 +681,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                 {filters.map((filter) => (
                   <div
                     key={filter.id}
-                    className="flex flex-col gap-2 rounded-xl border border-border bg-background/25 p-3 sm:flex-row sm:items-center"
+                    className="flex flex-col gap-2 rounded-xl border border-border bg-background/25 p-3 @[480px]:flex-row @[480px]:items-center"
                   >
                     <select
                       aria-label="Filter Column"
@@ -708,6 +717,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
 
                     <input
                       type="text"
+                      aria-label="Filter value"
                       placeholder="value"
                       value={filter.value}
                       onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
@@ -717,7 +727,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                     <button
                       type="button"
                       onClick={() => removeFilter(filter.id)}
-                      className="rounded p-1 text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-400 transition-colors self-end sm:self-center"
+                      className="rounded p-1 text-destructive-text/80 hover:bg-destructive-bg hover:text-destructive-text transition-colors self-end @[480px]:self-center"
                       title="Remove filter"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -807,7 +817,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                 type="button"
                 disabled={!canRunQuery}
                 onClick={() => onExecuteDirectSql(sql, nl)}
-                className="gap-2 h-10 bg-violet-600 hover:bg-violet-500 text-white transition-all font-semibold text-xs shadow-md shadow-violet-600/25"
+                className="gap-2 h-10 bg-secondary hover:bg-accent text-secondary-foreground border border-border transition-all font-semibold text-xs"
               >
                 <Play className="h-3.5 w-3.5" />
                 Execute Direct SQL
@@ -883,7 +893,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
               <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 SQL Statement
               </span>
-              <pre className="rounded-lg border border-border/40 bg-background/30 px-3 py-2 text-[10px] text-cyan-400 font-mono select-all overflow-x-auto custom-scrollbar leading-normal max-h-24">
+              <pre className="rounded-lg border border-border/40 bg-background/30 px-3 py-2 text-[10px] text-info-text font-mono select-all overflow-x-auto custom-scrollbar leading-normal max-h-24">
                 {sql || '-- Select a table and columns to build a query'}
               </pre>
             </div>

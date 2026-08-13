@@ -26,8 +26,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { FormMessage } from '@/components/ui/form-message';
 import { ItemActionsMenu } from '@/components/ItemActionsMenu';
 import { cn } from '@/lib/utils';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 
 // ── Template Form ─────────────────────────────────────────────────────────────
 
@@ -63,24 +67,27 @@ function TemplateForm({
   return (
     <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-5">
       <div className="space-y-1.5">
-        <Label>Name *</Label>
+        <Label htmlFor="template-name">Name *</Label>
         <Input
+          id="template-name"
           placeholder="e.g. Revenue by Month"
           value={form.name}
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Description</Label>
+        <Label htmlFor="template-description">Description</Label>
         <Input
+          id="template-description"
           placeholder="Optional — what does this template do?"
           value={form.description}
           onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Natural Language Template *</Label>
+        <Label htmlFor="template-nl">Natural Language Template *</Label>
         <Textarea
+          id="template-nl"
           rows={2}
           placeholder="Show me {{metric}} for {{time_period}}"
           value={form.template_nl}
@@ -90,8 +97,9 @@ function TemplateForm({
         <p className="text-xs text-muted-foreground">Use {'{{param_name}}'} for variable placeholders.</p>
       </div>
       <div className="space-y-1.5">
-        <Label>SQL Template *</Label>
+        <Label htmlFor="template-sql">SQL Template *</Label>
         <Textarea
+          id="template-sql"
           rows={5}
           placeholder="SELECT {{metric}} FROM orders WHERE date_trunc('month', created_at) = {{time_period}}"
           value={form.template_sql}
@@ -100,8 +108,9 @@ function TemplateForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Tags</Label>
+        <Label htmlFor="template-tags">Tags</Label>
         <Input
+          id="template-tags"
           placeholder="revenue, monthly, finance (comma-separated)"
           value={form.tags}
           onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
@@ -145,8 +154,9 @@ function RenderPanel({ template }: { template: QueryTemplate }) {
       <div className="grid grid-cols-2 gap-3">
         {allParams.map(param => (
           <div key={param} className="space-y-1">
-            <Label className="font-mono text-xs">{`{{${param}}}`}</Label>
+            <Label htmlFor={`template-param-${param}`} className="font-mono text-xs">{`{{${param}}}`}</Label>
             <Input
+              id={`template-param-${param}`}
               placeholder={`Value for ${param}`}
               value={values[param] ?? ''}
               onChange={e => setValues(v => ({ ...v, [param]: e.target.value }))}
@@ -158,11 +168,11 @@ function RenderPanel({ template }: { template: QueryTemplate }) {
         <Play className="h-3.5 w-3.5" />
         {mutation.isPending ? 'Rendering…' : 'Render'}
       </Button>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      <FormMessage>{error}</FormMessage>
       {result && (
         <div className="space-y-3">
           {result.missing_params.length > 0 && (
-            <p className="text-xs text-amber-400">Still missing: {result.missing_params.join(', ')}</p>
+            <p className="text-xs text-warning-text">Still missing: {result.missing_params.join(', ')}</p>
           )}
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rendered NL</p>
@@ -232,8 +242,18 @@ function TemplateCard({ template }: { template: QueryTemplate }) {
     <div className="glass-card card-lift rounded-xl overflow-hidden">
       {/* Header */}
       <div
-        className="flex cursor-pointer items-start gap-3 p-4 hover:bg-foreground/[0.02] transition-colors"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        className="flex cursor-pointer items-start gap-3 p-4 hover:bg-foreground/[0.02] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-inset"
         onClick={() => { if (!editing) setExpanded(v => !v); }}
+        onKeyDown={(e) => {
+          if (editing) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded(v => !v);
+          }
+        }}
       >
         <FileCode2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
@@ -372,6 +392,7 @@ export default function TemplatesPage() {
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [limit, setLimit] = useState(50);
+  const listRef = useRevealOnScroll<HTMLDivElement>();
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['templates', search, limit],
@@ -411,6 +432,7 @@ export default function TemplatesPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
           <Input
             placeholder="Search templates…"
+            aria-label="Search templates"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-10"
@@ -433,24 +455,17 @@ export default function TemplatesPage() {
 
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 rounded-xl border border-border bg-card/40 animate-pulse" />
-          ))}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <FileCode2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground/30" />
-          <p className="text-sm font-medium text-muted-foreground">
-            {search ? `No templates matching "${search}"` : 'No templates yet.'}
-          </p>
-          {!search && (
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Create your first template to save parameterized SQL patterns.
-            </p>
-          )}
-        </div>
+        <EmptyState
+          icon={FileCode2}
+          title={search ? `No templates matching "${search}"` : 'No templates yet'}
+          description={search ? undefined : 'Create your first template to save parameterized SQL patterns.'}
+          action={search ? undefined : { label: 'New Template', onClick: () => setCreating(true), icon: Plus }}
+        />
       ) : (
-        <div className="space-y-3">
+        <div ref={listRef} className="reveal reveal-stagger space-y-3">
           {items.map(t => <TemplateCard key={t.id} template={t} />)}
           {(data?.total ?? 0) > items.length && limit < 100 && (
             <div className="flex justify-center">

@@ -75,7 +75,7 @@ export default function ShortcutOverlay() {
         aria-modal="true"
         aria-label="Keyboard shortcuts"
         tabIndex={-1}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-popover/95 p-6 text-popover-foreground shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] backdrop-blur-2xl animate-slide-up focus:outline-none"
+        className="glass-strong shadow-depth-4 relative z-10 w-full max-w-md rounded-2xl p-6 text-popover-foreground animate-slide-up focus:outline-none"
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">

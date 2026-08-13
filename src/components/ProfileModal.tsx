@@ -13,7 +13,6 @@ import {
   Loader2,
   ShieldCheck,
   ServerCrash,
-  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,6 +25,7 @@ import {
 } from '../api/client';
 import { cn } from '@/lib/utils';
 import { useFocusTrap } from '@/components/ui/dialog';
+import { FormMessage } from '@/components/ui/form-message';
 
 interface Props {
   open: boolean;
@@ -141,7 +141,7 @@ function ProviderCard({
           <button
             type="button"
             onClick={() => setShow((v) => !v)}
-            tabIndex={-1}
+            aria-label={show ? 'Hide API key' : 'Show API key'}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground/80"
           >
             {show ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -162,7 +162,8 @@ function ProviderCard({
             onClick={handleDelete}
             disabled={deleting}
             title="Remove your key"
-            className="flex items-center justify-center rounded-xl border border-border bg-foreground/[0.03] p-2 text-muted-foreground/70 transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400 disabled:opacity-40"
+            aria-label={`Remove your ${item.label} key`}
+            className="flex items-center justify-center rounded-xl border border-border bg-foreground/[0.03] p-2 text-muted-foreground/70 transition-colors hover:border-destructive-border hover:bg-destructive-bg hover:text-destructive-text disabled:opacity-40"
           >
             {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
           </button>
@@ -170,11 +171,7 @@ function ProviderCard({
       </div>
 
       {/* Feedback */}
-      {error && (
-        <p className="flex items-center gap-1.5 text-xs text-rose-400">
-          <AlertCircle size={12} /> {error}
-        </p>
-      )}
+      <FormMessage>{error}</FormMessage>
       {success && (
         <p className="flex items-center gap-1.5 text-xs text-primary">
           <Check size={12} /> {success}
@@ -241,12 +238,12 @@ export default function ProfileModal({ open, onClose }: Props) {
         aria-modal="true"
         aria-label="Profile and API keys"
         tabIndex={-1}
-        className="relative w-full max-w-lg rounded-3xl border border-border bg-popover shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden animate-slide-up focus:outline-none"
+        className="glass-strong shadow-depth-4 relative w-full max-w-lg rounded-3xl overflow-hidden animate-slide-up focus:outline-none"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary text-primary-foreground font-bold text-lg shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary text-primary-foreground font-bold text-lg shadow-[0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]">
               {initial}
             </div>
             <div>
@@ -256,6 +253,7 @@ export default function ProfileModal({ open, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="rounded-xl p-2 text-muted-foreground/70 transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
           >
             <X size={18} />
@@ -282,7 +280,7 @@ export default function ProfileModal({ open, onClose }: Props) {
             )}
 
             {loadError && (
-              <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-400">
+              <div className="flex items-center gap-2 rounded-xl border border-destructive-border bg-destructive-bg px-3.5 py-2.5 text-sm text-destructive-text">
                 <ServerCrash size={14} /> {loadError}
               </div>
             )}

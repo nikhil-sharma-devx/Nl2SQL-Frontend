@@ -17,9 +17,13 @@ import { useConnections } from '../context/ConnectionContext';
 import { toast } from '../components/ui/toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { FormMessage } from '@/components/ui/form-message';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ItemActionsMenu } from '@/components/ItemActionsMenu';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 import {
   Clock3,
   Plus,
@@ -88,6 +92,7 @@ function HistoryPanel({ scheduleId }: { scheduleId: string }) {
 
 export default function SchedulesPage() {
   const queryClient = useQueryClient();
+  const listRef = useRevealOnScroll<HTMLDivElement>();
   const { connections, activeConnectionId } = useConnections();
   const [showCreate, setShowCreate] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -98,6 +103,8 @@ export default function SchedulesPage() {
   const [scheduleText, setScheduleText] = useState('');
   const [connectionId, setConnectionId] = useState('');
   const [notifyCondition, setNotifyCondition] = useState<'always' | 'on_results' | 'on_change'>('always');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<ScheduleListResponse>({
     queryKey: ['schedules'],
@@ -115,6 +122,7 @@ export default function SchedulesPage() {
         schedule_text: scheduleText,
         notify_condition: notifyCondition,
       }),
+    onMutate: () => setCreateError(null),
     onSuccess: () => {
       invalidate();
       setName('');
@@ -122,35 +130,57 @@ export default function SchedulesPage() {
       setScheduleText('');
       setNotifyCondition('always');
       setShowCreate(false);
+      setCreateError(null);
       toast({ title: 'Schedule created', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: (e) => {
+      const msg = handleApiError(e);
+      setCreateError(msg);
+      toast({ title: msg, variant: 'error' });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteSchedule(id),
+    onMutate: () => setActionError(null),
     onSuccess: () => {
       invalidate();
       setDeleteConfirmId(null);
+      setActionError(null);
       toast({ title: 'Schedule deleted', variant: 'success' });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: (e) => {
+      const msg = handleApiError(e);
+      setActionError(msg);
+      toast({ title: msg, variant: 'error' });
+    },
   });
 
   const pauseMutation = useMutation({
     mutationFn: (id: string) => pauseSchedule(id),
+    onMutate: () => setActionError(null),
     onSuccess: invalidate,
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: (e) => {
+      const msg = handleApiError(e);
+      setActionError(msg);
+      toast({ title: msg, variant: 'error' });
+    },
   });
 
   const resumeMutation = useMutation({
     mutationFn: (id: string) => resumeSchedule(id),
+    onMutate: () => setActionError(null),
     onSuccess: invalidate,
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: (e) => {
+      const msg = handleApiError(e);
+      setActionError(msg);
+      toast({ title: msg, variant: 'error' });
+    },
   });
 
   const runNowMutation = useMutation({
     mutationFn: (id: string) => runScheduleNow(id),
+    onMutate: () => setActionError(null),
     onSuccess: (run, id) => {
       queryClient.invalidateQueries({ queryKey: ['schedule-history', id] });
       invalidate();
@@ -159,7 +189,11 @@ export default function SchedulesPage() {
         variant: run.status === 'success' ? 'success' : 'error',
       });
     },
-    onError: (e) => toast({ title: handleApiError(e), variant: 'error' }),
+    onError: (e) => {
+      const msg = handleApiError(e);
+      setActionError(msg);
+      toast({ title: msg, variant: 'error' });
+    },
   });
 
   const items = data?.items ?? [];
@@ -180,19 +214,31 @@ export default function SchedulesPage() {
 
       {showCreate && (
         <div className="glass-card space-y-3 rounded-xl p-4">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Schedule name…" />
-          <Input
-            value={nlPrompt}
-            onChange={(e) => setNlPrompt(e.target.value)}
-            placeholder="What question should run? e.g. total revenue by day"
-          />
-          <Input
-            value={scheduleText}
-            onChange={(e) => setScheduleText(e.target.value)}
-            placeholder="When? e.g. every morning, daily at 9am, every Monday"
-          />
+          <div className="space-y-1.5">
+            <Label htmlFor="schedule-name">Schedule name</Label>
+            <Input id="schedule-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Schedule name…" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="schedule-prompt">Question</Label>
+            <Input
+              id="schedule-prompt"
+              value={nlPrompt}
+              onChange={(e) => setNlPrompt(e.target.value)}
+              placeholder="What question should run? e.g. total revenue by day"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="schedule-cadence">Cadence</Label>
+            <Input
+              id="schedule-cadence"
+              value={scheduleText}
+              onChange={(e) => setScheduleText(e.target.value)}
+              placeholder="When? e.g. every morning, daily at 9am, every Monday"
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <select
+              aria-label="Connection"
               value={connectionId || activeConnectionId || ''}
               onChange={(e) => setConnectionId(e.target.value)}
               className="rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -204,6 +250,7 @@ export default function SchedulesPage() {
               ))}
             </select>
             <select
+              aria-label="Email notification condition"
               value={notifyCondition}
               onChange={(e) => setNotifyCondition(e.target.value as typeof notifyCondition)}
               className="rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -223,23 +270,25 @@ export default function SchedulesPage() {
               Create
             </Button>
           </div>
+          <FormMessage>{createError}</FormMessage>
         </div>
       )}
+
+      <FormMessage>{actionError}</FormMessage>
 
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
-            <Clock3 className="h-7 w-7 text-primary" />
-          </div>
-          <p className="font-medium text-foreground">No scheduled queries yet</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">Create one above to get results emailed to you on a cadence.</p>
-        </div>
+        <EmptyState
+          icon={Clock3}
+          title="No scheduled queries yet"
+          description="Create one above to get results emailed to you on a cadence."
+          action={{ label: 'New schedule', onClick: () => setShowCreate(true), icon: Plus }}
+        />
       ) : (
-        <div className="space-y-3">
+        <div ref={listRef} className="reveal reveal-stagger space-y-3">
           {items.map((s) => {
             const badge = statusBadge(s);
             const expanded = expandedId === s.id;

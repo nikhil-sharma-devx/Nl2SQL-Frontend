@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp, Check, X } from 'lucide-react';
 import { getOnboarding, patchTutorialProgress, type OnboardingState } from '../api/client';
@@ -18,6 +18,16 @@ const ITEM_LABELS: Record<string, string> = {
 export default function OnboardingChecklist() {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(true);
+  // Audit #15: dismissing the checklist must not be a one-way door. We keep a
+  // short-lived "just dismissed" strip with an inline Undo (like a toast, but
+  // anchored where the checklist was) — see also the permanent resurface path
+  // exposed as a Command Palette action ("Show onboarding checklist").
+  const [showUndo, setShowUndo] = useState(false);
+  const undoTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+  }, []);
 
   const { data: onboarding } = useQuery<OnboardingState>({
     queryKey: ['onboarding'],
@@ -35,11 +45,39 @@ export default function OnboardingChecklist() {
     mutationFn: () => patchTutorialProgress({ dismissed: true }),
     onSuccess: () => {
       queryClient.setQueryData(['tutorial-progress'], (old: any) => ({ ...old, dismissed_at: new Date().toISOString() }));
+      setShowUndo(true);
+      if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = window.setTimeout(() => setShowUndo(false), 6000);
     },
   });
 
-  // Hide if dismissed or fully complete
-  if (tutorial?.dismissed_at) return null;
+  const undoMutation = useMutation({
+    mutationFn: () => patchTutorialProgress({ dismissed: false }),
+    onSuccess: () => {
+      queryClient.setQueryData(['tutorial-progress'], (old: any) => ({ ...old, dismissed_at: null }));
+      setShowUndo(false);
+      if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    },
+  });
+
+  // Hide if dismissed or fully complete — but keep the undo strip visible for
+  // a few seconds right after dismissal so the action is reversible in place.
+  if (tutorial?.dismissed_at) {
+    if (!showUndo) return null;
+    return (
+      <div className="mx-2 mb-2 flex items-center justify-between gap-3 rounded-xl border border-border bg-foreground/[0.03] px-3 py-2 animate-fade-in">
+        <span className="text-xs text-muted-foreground">Getting Started dismissed.</span>
+        <button
+          type="button"
+          onClick={() => undoMutation.mutate()}
+          disabled={undoMutation.isPending}
+          className="shrink-0 text-xs font-semibold text-primary transition-opacity hover:opacity-80 disabled:opacity-50"
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
   if (!onboarding) return null;
   if ((onboarding.progress_pct ?? 0) >= 100) return null;
 
@@ -67,6 +105,7 @@ export default function OnboardingChecklist() {
           onClick={() => dismissMutation.mutate()}
           className="ml-2 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
           title="Dismiss"
+          aria-label="Dismiss onboarding checklist"
         >
           <X className="h-3 w-3" />
         </button>

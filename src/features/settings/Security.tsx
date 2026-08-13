@@ -9,6 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Separator } from '../../components/ui/separator';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Badge } from '../../components/ui/badge';
+import { FormMessage } from '../../components/ui/form-message';
 import { handleApiError } from '../../api/client';
 
 interface LoginSession {
@@ -77,7 +78,7 @@ function ChangePasswordSection() {
           />
         </div>
         {status === 'success' && <p className="text-sm text-primary">{message}</p>}
-        {status === 'error' && <p className="text-sm text-destructive">{message}</p>}
+        <FormMessage>{status === 'error' ? message : ''}</FormMessage>
         <Button
           onClick={() => mutation.mutate()}
           disabled={!canSubmit || mutation.isPending}

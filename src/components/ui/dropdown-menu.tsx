@@ -17,6 +17,10 @@ interface Rect {
 interface DropdownContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Closes the menu and returns focus to the trigger — the only path that should
+      run on Escape, outside-click, or item activation, so keyboard users never
+      lose their place. */
+  close: () => void;
   triggerRef: React.RefObject<HTMLButtonElement | null>;
   rect: Rect | null;
   setRect: (rect: Rect | null) => void;
@@ -32,8 +36,12 @@ function DropdownMenu({ className, children }: { className?: string; children: R
   const [open, setOpen] = React.useState(false);
   const [rect, setRect] = React.useState<Rect | null>(null);
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const close = React.useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }, []);
   return (
-    <DropdownContext.Provider value={{ open, setOpen, triggerRef, rect, setRect }}>
+    <DropdownContext.Provider value={{ open, setOpen, close, triggerRef, rect, setRect }}>
       <div className={cn("relative inline-block", className)}>{children}</div>
     </DropdownContext.Provider>
   );
@@ -74,8 +82,20 @@ interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> 
 }
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   ({ className, align = "start", style, ...props }, _ref) => {
-    const { open, setOpen, triggerRef, rect, setRect } = useDropdown();
+    const { open, setOpen, close, triggerRef, rect, setRect } = useDropdown();
     const contentRef = React.useRef<HTMLDivElement | null>(null);
+
+    const menuItems = () =>
+      Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+
+    // Move focus onto the first item the moment the menu opens (keyboard or mouse),
+    // so arrow keys work immediately without a prior Tab.
+    React.useEffect(() => {
+      if (!open) return;
+      const id = requestAnimationFrame(() => menuItems()[0]?.focus());
+      return () => cancelAnimationFrame(id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
     React.useEffect(() => {
       if (!open) return;
@@ -92,7 +112,27 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         setOpen(false);
       };
       const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setOpen(false);
+        const items = menuItems();
+        const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+        if (e.key === "Escape") {
+          e.preventDefault();
+          close();
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          items[(currentIndex + 1 + items.length) % items.length]?.focus();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          items[(currentIndex - 1 + items.length) % items.length]?.focus();
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          items[0]?.focus();
+        } else if (e.key === "End") {
+          e.preventDefault();
+          items[items.length - 1]?.focus();
+        } else if (e.key === "Tab") {
+          // Tabbing out of an open menu should close it rather than leave it floating.
+          setOpen(false);
+        }
       };
       window.addEventListener("resize", remeasure);
       window.addEventListener("scroll", remeasure, true);
@@ -104,7 +144,7 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         document.removeEventListener("mousedown", onPointer);
         document.removeEventListener("keydown", onKey);
       };
-    }, [open, setOpen, triggerRef, setRect]);
+    }, [open, setOpen, close, triggerRef, setRect]);
 
     if (!open || !rect) return null;
 
@@ -126,7 +166,7 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         role="menu"
         style={positionStyle}
         className={cn(
-          "z-[120] max-h-[60vh] min-w-[12rem] overflow-y-auto custom-scrollbar rounded-xl border border-border bg-popover/95 p-1 shadow-[0_24px_70px_-18px_rgba(0,0,0,0.6)] backdrop-blur-2xl animate-slide-up",
+          "glass-strong z-[120] max-h-[60vh] min-w-[12rem] overflow-y-auto custom-scrollbar rounded-xl p-1 animate-slide-up",
           className,
         )}
         {...props}
@@ -141,19 +181,20 @@ const DropdownMenuItem = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, onClick, ...props }, ref) => {
-  const { setOpen } = useDropdown();
+  const { close } = useDropdown();
   return (
     <button
       ref={ref}
       type="button"
       role="menuitem"
+      tabIndex={-1}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-foreground/[0.06] hover:text-foreground focus:bg-foreground/[0.06] focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+        "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-foreground/[0.06] hover:text-foreground focus:bg-primary/10 focus:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       onClick={(e) => {
         onClick?.(e);
-        setOpen(false);
+        close();
       }}
       {...props}
     />

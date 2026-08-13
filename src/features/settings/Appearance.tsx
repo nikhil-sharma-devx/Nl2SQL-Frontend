@@ -1,9 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Check } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
-import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
+import { FormMessage } from '../../components/ui/form-message';
 import { cn } from '@/lib/utils';
 import InfoTip from '../../components/InfoTip';
+
+function SavedBadge({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary animate-fade-in">
+      <Check className="h-3.5 w-3.5" /> Saved
+    </span>
+  );
+}
 
 function RadioGroup<T extends string>({
   label,
@@ -36,7 +46,7 @@ function RadioGroup<T extends string>({
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              'flex flex-col items-start rounded-xl border p-3 text-left transition-all',
+              'flex flex-col items-start rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
               value === opt.value
                 ? 'border-primary/50 bg-primary/10 text-foreground'
                 : 'border-border bg-background/50 text-muted-foreground hover:text-foreground hover:border-border/80',
@@ -54,24 +64,27 @@ function RadioGroup<T extends string>({
 }
 
 export default function AppearanceSettings() {
-  const { settings, updateSettings, isSaving } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [form, setForm] = useState({
     font_size: settings.font_size,
     ui_density: settings.ui_density,
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     setForm({ font_size: settings.font_size, ui_density: settings.ui_density });
   }, [settings.font_size, settings.ui_density]);
 
-  const handleSave = async () => {
+  const commit = async (next: typeof form) => {
+    setForm(next);
     try {
       setError('');
-      await updateSettings({ font_size: form.font_size, ui_density: form.ui_density });
+      await updateSettings({ font_size: next.font_size, ui_density: next.ui_density });
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSaved(false), 1500);
     } catch {
       setError('Failed to save appearance settings');
     }
@@ -84,7 +97,7 @@ export default function AppearanceSettings() {
         hint="Controls text size across the application. Changes take effect immediately."
         info="Sets the base font size for the entire app. Small = 13px, Medium = 16px (default), Large = 18px. All spacing scales proportionally since Tailwind uses rem units."
         value={form.font_size}
-        onChange={(v) => setForm(f => ({ ...f, font_size: v }))}
+        onChange={(v) => commit({ ...form, font_size: v })}
         options={[
           { value: 'small', label: 'Small', description: 'Compact text — 13px base, fits more content' },
           { value: 'medium', label: 'Medium', description: 'Default — 16px, balanced readability' },
@@ -97,7 +110,7 @@ export default function AppearanceSettings() {
         hint="Controls spacing and padding throughout the interface. Changes take effect immediately."
         info="Scales all padding, margins, and gaps in the app. Compact = tighter layout showing more content. Spacious = more breathing room, easier to click."
         value={form.ui_density}
-        onChange={(v) => setForm(f => ({ ...f, ui_density: v }))}
+        onChange={(v) => commit({ ...form, ui_density: v })}
         options={[
           { value: 'compact', label: 'Compact', description: 'Tighter spacing — more visible on screen' },
           { value: 'comfortable', label: 'Comfortable', description: 'Balanced spacing (default)' },
@@ -105,12 +118,10 @@ export default function AppearanceSettings() {
         ]}
       />
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {saved && <p className="text-sm text-primary">Appearance saved.</p>}
-
-      <Button onClick={handleSave} disabled={isSaving}>
-        {isSaving ? 'Saving…' : 'Save Changes'}
-      </Button>
+      <div className="flex items-center gap-2 pt-1">
+        <FormMessage>{error}</FormMessage>
+        <SavedBadge show={saved && !error} />
+      </div>
     </div>
   );
 }

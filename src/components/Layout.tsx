@@ -41,6 +41,8 @@ import ShortcutOverlay from './ShortcutOverlay';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useCommandPalette } from '@/context/CommandPaletteContext';
 import { useMagneticHover } from '@/hooks/useMagneticHover';
+import PageTransition from '@/motion/PageTransition';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getSessions, checkHealth, getNotificationPrefs, type SessionListResponse } from '../api/client';
 import { setInAppNotificationsEnabled } from './ui/toast';
 
@@ -68,6 +70,7 @@ const secondaryNavItems: NavItem[] = [
   { to: '/metrics', end: false, icon: BadgeCheck, label: 'Metrics' },
   { to: '/templates', end: false, icon: FileCode2, label: 'Templates' },
   { to: '/training', end: false, icon: BrainCircuit, label: 'Training' },
+  { to: '/help', end: false, icon: HelpCircle, label: 'Help' },
 ];
 
 const MORE_EXPANDED_KEY = 'nl2sql:nav-more-expanded';
@@ -344,7 +347,7 @@ const Layout = () => {
           {!isIconMode && (
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_24px_rgba(16,185,129,0.55),0_0_8px_rgba(16,185,129,0.3)] glow-primary-sm">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-primary-foreground glow-primary-sm">
                   <TerminalSquare className="h-[18px] w-[18px]" strokeWidth={2.4} />
                 </div>
                 <div className="leading-tight">
@@ -362,14 +365,18 @@ const Layout = () => {
                   <X className="h-4 w-4" />
                 </button>
                 {/* Desktop collapse */}
-                <button
-                  onClick={() => setCollapsed(true)}
-                  title="Collapse sidebar"
-                  className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors md:flex"
-                  aria-label="Collapse sidebar"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setCollapsed(true)}
+                      className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors md:flex"
+                      aria-label="Collapse sidebar"
+                    >
+                      <PanelLeftClose className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Collapse sidebar</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           )}
@@ -388,7 +395,7 @@ const Layout = () => {
               <button
                 ref={newChatBtnRef}
                 onClick={() => { navigate('/query', { state: { newChat: true } }); setMobileOpen(false); }}
-                className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:shadow-[0_0_16px_rgba(16,185,129,0.15)]"
+                className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:shadow-[0_0_16px_color-mix(in_srgb,var(--primary)_15%,transparent)]"
               >
                 <span className="flex items-center gap-2.5">
                   <SquarePen className="h-4 w-4 text-primary" />
@@ -472,7 +479,7 @@ const Layout = () => {
                       <>
                         {/* Active indicator — bar on left (expanded) or dot on bottom (collapsed) */}
                         {isActive && !isIconMode && (
-                          <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8),0_0_5px_rgba(16,185,129,0.5)]" />
+                          <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)] shadow-[0_0_14px_color-mix(in_srgb,var(--primary)_80%,transparent),0_0_5px_color-mix(in_srgb,var(--primary)_50%,transparent)]" />
                         )}
                         {isActive && isIconMode && (
                           <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
@@ -528,7 +535,7 @@ const Layout = () => {
                       {({ isActive }) => (
                         <>
                           {isActive && !isIconMode && (
-                            <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8),0_0_5px_rgba(16,185,129,0.5)]" />
+                            <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)] shadow-[0_0_14px_color-mix(in_srgb,var(--primary)_80%,transparent),0_0_5px_color-mix(in_srgb,var(--primary)_50%,transparent)]" />
                           )}
                           {isActive && isIconMode && (
                             <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
@@ -635,7 +642,7 @@ const Layout = () => {
                 <button
                   id="btn-logout"
                   onClick={() => { setUserMenuOpen(false); logout().then(() => navigate('/auth')); }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-rose-400 transition-colors hover:bg-rose-500/10"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-destructive-text transition-colors hover:bg-destructive-bg"
                 >
                   <LogOut size={15} />
                   Sign out
@@ -652,7 +659,7 @@ const Layout = () => {
               )}
               title={isIconMode ? (user?.full_name ?? user?.email ?? 'Profile') : undefined}
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-emerald-400 text-xs font-bold text-primary-foreground shadow-[0_0_10px_rgba(16,185,129,0.4)]">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-xs font-bold text-primary-foreground shadow-[0_0_10px_color-mix(in_srgb,var(--primary)_40%,transparent)]">
                 {(user?.full_name ?? user?.email ?? 'U')[0].toUpperCase()}
               </div>
               {!isIconMode && (
@@ -710,16 +717,20 @@ const Layout = () => {
             </button>
             {/* Desktop expand button (only when collapsed) */}
             {collapsed && (
-              <button
-                onClick={() => setCollapsed(false)}
-                title="Expand sidebar"
-                className="hidden rounded-lg p-2 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors md:flex"
-                aria-label="Expand sidebar"
-              >
-                <PanelLeftOpen className="h-5 w-5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setCollapsed(false)}
+                    className="hidden rounded-lg p-2 text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors md:flex"
+                    aria-label="Expand sidebar"
+                  >
+                    <PanelLeftOpen className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Expand sidebar</TooltipContent>
+              </Tooltip>
             )}
-            <span className="h-7 w-1.5 rounded-full bg-gradient-to-b from-primary to-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.7),0_0_6px_rgba(16,185,129,0.45)]" />
+            <span className="h-7 w-1.5 rounded-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)] shadow-[0_0_16px_color-mix(in_srgb,var(--primary)_70%,transparent),0_0_6px_color-mix(in_srgb,var(--primary)_45%,transparent)]" />
             <div className="min-w-0">
               <h2 className="truncate font-display text-base font-semibold tracking-tight text-foreground md:text-lg">
                 {meta.title}
@@ -731,30 +742,33 @@ const Layout = () => {
             <button
               onClick={openPalette}
               title="Search & jump to anything (Ctrl+K)"
-              className="hidden items-center gap-2 rounded-lg border border-border bg-foreground/[0.02] px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground sm:flex"
+              aria-label="Search and jump to anything (Ctrl+K)"
+              className="flex items-center gap-2 rounded-lg border border-border bg-foreground/[0.02] px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground sm:px-3"
             >
               <Command className="h-3.5 w-3.5" />
-              <span>Search</span>
-              <kbd className="rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80">
+              <span className="hidden sm:inline">Search</span>
+              <kbd className="hidden rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80 sm:inline-block">
                 Ctrl K
               </kbd>
             </button>
-            <div
-              title={isHealthy ? 'Backend connected' : 'Backend unreachable'}
-              className="flex items-center gap-1.5"
-            >
-              <span
-                className={`h-2 w-2 rounded-full transition-colors ${
-                  isHealthy
-                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]'
-                    : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]'
-                }`}
-              />
-              <span className="hidden font-mono text-[10px] text-muted-foreground/60 sm:block">
-                {isHealthy ? 'Connected' : 'Offline'}
-              </span>
-            </div>
-            <ModelSwitcher />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`h-2 w-2 rounded-full transition-colors ${
+                      isHealthy
+                        ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]'
+                        : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+                    }`}
+                  />
+                  <span className="hidden font-mono text-[10px] text-muted-foreground/60 sm:block">
+                    {isHealthy ? 'Connected' : 'Offline'}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{isHealthy ? 'Backend connected' : 'Backend unreachable'}</TooltipContent>
+            </Tooltip>
+            {user?.is_admin && <ModelSwitcher />}
           </div>
         </header>
 
@@ -771,7 +785,9 @@ const Layout = () => {
               </div>
             }
           >
-            <Outlet />
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
           </Suspense>
         </main>
       </div>

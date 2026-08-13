@@ -8,7 +8,7 @@
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-export type ThemeId = 'dark' | 'light' | 'noir' | 'claude';
+export type ThemeId = 'dark' | 'parchment' | 'onyx' | 'sienna';
 
 export interface ThemeMeta {
   id: ThemeId;
@@ -19,10 +19,10 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ThemeMeta[] = [
-  { id: 'dark', label: 'Emerald Dark', hint: 'Default', dark: true, swatch: ['#0a0c11', '#10b981'] },
-  { id: 'light', label: 'Light', hint: 'Bright & clean', dark: false, swatch: ['#f7f8fa', '#0e9f6e'] },
-  { id: 'noir', label: 'Noir', hint: 'Black & white', dark: true, swatch: ['#000000', '#fafafa'] },
-  { id: 'claude', label: 'Claude', hint: 'Warm clay', dark: false, swatch: ['#f0eee6', '#c96442'] },
+  { id: 'dark', label: 'Drafting Ink', hint: 'Default', dark: true, swatch: ['#0b1119', '#c8903f'] },
+  { id: 'parchment', label: 'Parchment', hint: 'Bright & clean', dark: false, swatch: ['#f2ede2', '#7a5a34'] },
+  { id: 'onyx', label: 'Onyx', hint: 'Black & gold', dark: true, swatch: ['#0a0a0a', '#c9a227'] },
+  { id: 'sienna', label: 'Sienna', hint: 'Warm terracotta', dark: false, swatch: ['#f5ece1', '#a8462b'] },
 ];
 
 const STORAGE_KEY = 'nl2sql_theme';

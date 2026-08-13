@@ -13,6 +13,7 @@ import type { SQLVersion } from './VersionedSQLDisplay';
 const VersionedSQLDisplay = lazy(() => import('./VersionedSQLDisplay'));
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import ExportShareControls from './ExportShareControls';
 
 interface SqlPreviewProps {
@@ -173,7 +174,7 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
     <div>
       {/* Versioned SQL Display */}
       <div className="mb-4">
-        <Suspense fallback={<div className="h-24 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
+        <Suspense fallback={<Skeleton className="h-24 rounded-xl" />}>
           <VersionedSQLDisplay versions={versions} onReRun={handleReRunVersion} isRunning={isRunning} />
         </Suspense>
       </div>

@@ -91,7 +91,7 @@ function PinnedTablesSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2.5">
-          <Pin className="h-5 w-5 text-amber-400" />
+          <Pin className="h-5 w-5 text-warning-text" />
           Pinned Tables
         </CardTitle>
         <CardDescription>
@@ -295,7 +295,7 @@ function SchemaTablesSection() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2.5">
-              <Table2 className="h-5 w-5 text-emerald-400" />
+              <Table2 className="h-5 w-5 text-success-text" />
               Tables
             </CardTitle>
             <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
@@ -387,7 +387,7 @@ function SchemaTablesSection() {
                     </button>
                     <button
                       onClick={() => setExplain({ table: t.table_name })}
-                      className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                      className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-success-bg hover:text-success-text"
                       title="Explain this table"
                     >
                       <Lightbulb className="h-4 w-4" />
@@ -398,7 +398,7 @@ function SchemaTablesSection() {
                       className={cn(
                         'shrink-0 rounded-lg p-1.5 transition-colors',
                         t.pinned
-                          ? 'text-amber-400 hover:bg-amber-400/10'
+                          ? 'text-warning-text hover:bg-warning-bg'
                           : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground',
                       )}
                       title={t.pinned ? 'Unpin table' : 'Pin table'}
@@ -435,7 +435,7 @@ function SchemaTablesSection() {
                                 <td className="px-2 py-1 text-right">
                                   <button
                                     onClick={() => setExplain({ table: t.table_name, column: c.name })}
-                                    className="rounded p-1 text-muted-foreground transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                                    className="rounded p-1 text-muted-foreground transition-colors hover:bg-success-bg hover:text-success-text"
                                     title={`Explain ${c.name}`}
                                   >
                                     <Lightbulb className="h-3.5 w-3.5" />
@@ -617,12 +617,12 @@ const SchemaPage = () => {
           )}
 
           {refreshMutation.isError && (
-            <div className="mt-6 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
+            <div className="mt-6 rounded-xl border border-destructive-border bg-destructive-bg p-4">
               <div className="mb-2 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-rose-400" />
-                <span className="font-medium text-rose-300">Refresh Failed</span>
+                <AlertCircle className="h-5 w-5 text-destructive-text" />
+                <span className="font-medium text-destructive-text">Refresh Failed</span>
               </div>
-              <p className="text-sm text-rose-300/80">{handleApiError(refreshMutation.error)}</p>
+              <p className="text-sm text-destructive-text/80">{handleApiError(refreshMutation.error)}</p>
             </div>
           )}
         </CardContent>
@@ -632,7 +632,7 @@ const SchemaPage = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2.5">
-            <Database className="h-5 w-5 text-cyan-400" />
+            <Database className="h-5 w-5 text-info-text" />
             Schema Status
           </CardTitle>
         </CardHeader>
@@ -654,7 +654,7 @@ const SchemaPage = () => {
                   {status?.vector_store_ready ? (
                     <><Check className="h-5 w-5 text-primary" /><span className="font-medium text-primary">Ready</span></>
                   ) : (
-                    <><AlertCircle className="h-5 w-5 text-amber-400" /><span className="font-medium text-amber-400">Not Ready</span></>
+                    <><AlertCircle className="h-5 w-5 text-warning-text" /><span className="font-medium text-warning-text">Not Ready</span></>
                   )}
                 </div>
               </div>
@@ -670,7 +670,7 @@ const SchemaPage = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2.5">
-            <Upload className="h-5 w-5 text-blue-400" />
+            <Upload className="h-5 w-5 text-info-text" />
             Upload Schema
           </CardTitle>
         </CardHeader>
@@ -683,13 +683,13 @@ const SchemaPage = () => {
             className={cn(
               'rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300',
               dragActive
-                ? 'border-blue-500 bg-blue-500/10 shadow-[inset_0_0_20px_rgba(59,130,246,0.2)]'
-                : 'border-border hover:border-blue-500/50 hover:bg-foreground/[0.02]',
+                ? 'border-info-text bg-info-bg shadow-[inset_0_0_20px_var(--info-border)]'
+                : 'border-border hover:border-info-text/50 hover:bg-foreground/[0.02]',
             )}
           >
             <input type="file" accept=".json,application/json" onChange={handleFileChange} className="hidden" id="schema-file" />
             <label htmlFor="schema-file" className="flex cursor-pointer flex-col items-center">
-              <div className={cn('mb-4 flex h-16 w-16 items-center justify-center rounded-2xl transition-colors', dragActive ? 'bg-blue-500/20 text-blue-400' : 'bg-foreground/[0.04] text-muted-foreground')}>
+              <div className={cn('mb-4 flex h-16 w-16 items-center justify-center rounded-2xl transition-colors', dragActive ? 'bg-info-bg text-info-text' : 'bg-foreground/[0.04] text-muted-foreground')}>
                 <FileJson className="h-8 w-8" />
               </div>
               <p className="mb-1 font-medium text-foreground/85">{selectedFile ? selectedFile.name : 'Drop your schema JSON file here'}</p>
@@ -704,7 +704,7 @@ const SchemaPage = () => {
                 id="reset-schema"
                 checked={resetExisting}
                 onChange={(e) => setResetExisting(e.target.checked)}
-                className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-border bg-background/60 transition-colors checked:border-rose-500 checked:bg-rose-500"
+                className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-border bg-background/60 transition-colors checked:border-destructive checked:bg-destructive"
               />
               <Check className="pointer-events-none absolute left-0.5 top-0.5 h-3.5 w-3.5 text-foreground opacity-0 peer-checked:opacity-100" />
             </span>
@@ -744,12 +744,12 @@ const SchemaPage = () => {
           )}
 
           {uploadMutation.isError && (
-            <div className="mt-6 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
+            <div className="mt-6 rounded-xl border border-destructive-border bg-destructive-bg p-4">
               <div className="mb-2 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-rose-400" />
-                <span className="font-medium text-rose-300">Upload Failed</span>
+                <AlertCircle className="h-5 w-5 text-destructive-text" />
+                <span className="font-medium text-destructive-text">Upload Failed</span>
               </div>
-              <p className="text-sm text-rose-300/80">{handleApiError(uploadMutation.error)}</p>
+              <p className="text-sm text-destructive-text/80">{handleApiError(uploadMutation.error)}</p>
             </div>
           )}
         </CardContent>

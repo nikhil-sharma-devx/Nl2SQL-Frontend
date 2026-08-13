@@ -30,6 +30,7 @@ export function ItemActionsMenu({ actions, className }: { actions: ActionItem[];
         onClick={(e) => e.stopPropagation()}
         className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
         title="More actions"
+        aria-label="More actions"
       >
         <MoreVertical className="h-3.5 w-3.5" />
       </DropdownMenuTrigger>

@@ -37,6 +37,7 @@ export interface AuthUser {
   full_name: string | null;
   auth_provider: string;
   created_at: string;
+  is_admin: boolean;
 }
 
 interface AuthContextValue {

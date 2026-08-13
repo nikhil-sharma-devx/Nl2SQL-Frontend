@@ -3,7 +3,8 @@
  * (Logic unchanged; restyled.)
  */
 import { useState, useMemo, useRef } from 'react';
-import { Play, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, Download, Check } from 'lucide-react';
+import { Play, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, Download, Check, Inbox } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { QueryResponse } from '../types/query.types';
 
 // Above this many rows on a single page we virtualize the tbody so the DOM node
@@ -60,10 +61,13 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
   // Empty results
   if (displayResult.length === 0) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
-        <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-        <p className="text-sm text-muted-foreground">Query executed successfully. No rows returned.</p>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title="No rows returned"
+        description="Query executed successfully, but no matching rows were found."
+        compact
+        className="mb-4"
+      />
     );
   }
 
@@ -260,7 +264,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
           <button
             onClick={exportCSV}
             title="Export to CSV"
-            className="flex items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
           >
             <Download className="h-3.5 w-3.5" />
             CSV
@@ -268,7 +272,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
           <button
             onClick={exportExcel}
             title="Export to Excel"
-            className="flex items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground"
           >
             <Download className="h-3.5 w-3.5" />
             Excel
@@ -324,6 +328,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
           <div className="flex items-center gap-1.5 rounded-md border border-border bg-background/60 px-2 py-1">
             <span className="font-mono text-[10px] text-muted-foreground/70">Rows</span>
             <select
+              aria-label="Rows per page"
               value={rowsPerPage === 0 ? 'all' : String(rowsPerPage)}
               onChange={(e) => handleRowsPerPageChange(e.target.value)}
               className="cursor-pointer bg-transparent font-mono text-xs text-foreground focus:outline-none [&>option]:bg-popover"
@@ -341,7 +346,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="rounded-md border border-border bg-foreground/5 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors hover:bg-foreground/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] rounded-md border border-border bg-foreground/5 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors hover:bg-foreground/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
@@ -361,9 +366,9 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`h-8 w-8 rounded-md font-mono text-xs transition-all ${
+                    className={`h-[44px] w-[44px] rounded-md font-mono text-xs transition-all ${
                       currentPage === pageNum
-                        ? 'border border-primary/30 bg-primary/20 text-primary shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                        ? 'border border-primary/30 bg-primary/20 text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--primary)_20%,transparent)]'
                         : 'bg-transparent text-muted-foreground hover:bg-foreground/5'
                     }`}
                   >
@@ -375,7 +380,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="rounded-md border border-border bg-foreground/5 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors hover:bg-foreground/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] rounded-md border border-border bg-foreground/5 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors hover:bg-foreground/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>

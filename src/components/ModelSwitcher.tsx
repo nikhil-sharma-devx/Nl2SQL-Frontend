@@ -62,7 +62,7 @@ const ModelSwitcher = () => {
   if (configLoading || modelsLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground/80">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-slate-600" />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-muted-foreground/40" />
         Loading…
       </div>
     );
@@ -121,7 +121,7 @@ const ModelSwitcher = () => {
       {updateMutation.isPending && <Sparkles className="h-4 w-4 animate-pulse text-primary" />}
 
       {updateMutation.isError && (
-        <span className="text-xs text-rose-400">{handleApiError(updateMutation.error)}</span>
+        <span className="text-xs text-destructive-text">{handleApiError(updateMutation.error)}</span>
       )}
     </div>
   );

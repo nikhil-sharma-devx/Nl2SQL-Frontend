@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { FormMessage } from '@/components/ui/form-message';
 import { useConnections } from '../../context/ConnectionContext';
 import { handleApiError, type Connection } from '../../api/client';
 import { toast } from '../../components/ui/toast';
@@ -119,7 +120,7 @@ function ConnectionRow({ conn }: { conn: Connection }) {
               disabled={busy !== null}
               title="Delete"
             >
-              <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+              <Trash2 className="h-3.5 w-3.5 text-destructive-text" />
             </Button>
           </div>
         )}
@@ -166,8 +167,8 @@ function ConnectionRow({ conn }: { conn: Connection }) {
       )}
 
       {confirmDelete && (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-rose-500/30 bg-destructive/10 p-3">
-          <span className="text-sm text-rose-200">Delete “{conn.name}”? Its schema index is removed too.</span>
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-destructive-border bg-destructive-bg p-3">
+          <span className="text-sm text-destructive-text">Delete "{conn.name}"? Its schema index is removed too.</span>
           <div className="flex shrink-0 items-center gap-2">
             <Button
               size="sm"
@@ -187,7 +188,7 @@ function ConnectionRow({ conn }: { conn: Connection }) {
         </div>
       )}
 
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      <FormMessage className="mt-2">{error}</FormMessage>
     </div>
   );
 }
@@ -255,7 +256,7 @@ function AddConnectionForm() {
           Validated and connection-tested before it's saved. Stored encrypted at rest.
         </p>
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      <FormMessage>{error}</FormMessage>
       <div className="flex items-center gap-2">
         <Button onClick={handleAdd} disabled={submitting || !name.trim() || !url.trim()}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -274,7 +275,7 @@ export default function ConnectionsManager() {
     <Card id="db-connection-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2.5">
-          <Link2 className="h-5 w-5 text-violet-400" />
+          <Link2 className="h-5 w-5 text-violet-text" />
           Database Connections
         </CardTitle>
         <CardDescription>

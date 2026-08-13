@@ -25,6 +25,7 @@ import {
 } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Skeleton } from './ui/skeleton';
 import { toast } from './ui/toast';
 import { LayoutDashboard, Plus, Loader2, Check } from 'lucide-react';
 
@@ -91,8 +92,8 @@ export default function AddToDashboardModal({ open, onOpenChange, widget }: AddT
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+          <div className="space-y-2 py-1">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-lg" />)}
           </div>
         ) : (
           <div className="space-y-4">
@@ -135,6 +136,7 @@ export default function AddToDashboardModal({ open, onOpenChange, widget }: AddT
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="New dashboard name…"
+                aria-label={items.length > 0 ? 'New dashboard name' : 'Dashboard name'}
                 onKeyDown={(e) => e.key === 'Enter' && canSubmit && addMutation.mutate()}
               />
             </div>

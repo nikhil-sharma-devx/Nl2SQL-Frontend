@@ -4,8 +4,10 @@
  * Displays user questions and assistant responses including SQL previews,
  * result tables, validation errors, and schema info. (Logic unchanged; restyled.)
  */
-import { useState, lazy, Suspense } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { motion, useReducedMotion } from 'framer-motion';
+import { standardTransition } from '@/motion/variants';
 import {
   Loader2,
   Sparkles,
@@ -36,6 +38,7 @@ import AddToDashboardModal from './AddToDashboardModal';
 const DataChart = lazy(() => import('./DataChart'));
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { createSavedQuery, type WidgetInput } from '../api/client';
 import { guessChartConfig } from '../utils/chart';
 import type { ChatMessage } from '../types/query.types';
@@ -90,6 +93,11 @@ const ChatWindow = ({
 }: ChatWindowProps) => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
+  const reducedMotion = useReducedMotion();
+  // Only stagger the batch of messages already present on mount (e.g. a
+  // loaded session history) — live-appended messages get an immediate,
+  // un-delayed entrance so real-time chat never feels laggy.
+  const initialCountRef = useRef(messages.length);
 
   const startEdit = (messageId: number, current: string) => {
     setEditingId(messageId);
@@ -107,11 +115,19 @@ const ChatWindow = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col space-y-6 overflow-y-auto custom-scrollbar pr-1">
-      {messages.map((msg) => (
-        <div key={msg.id} className="animate-slide-up space-y-4">
+      {messages.map((msg, index) => {
+        const isInitialBatch = index < initialCountRef.current;
+        const delay = reducedMotion || !isInitialBatch ? 0 : Math.min(index, 6) * 0.07;
+        return (
+        <motion.div
+          key={msg.id}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0, transition: reducedMotion ? { duration: 0.15 } : { ...standardTransition, delay } }}
+          className="space-y-4"
+        >
           {/* User Question */}
           <div className="group flex flex-col items-end">
-            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25)]">
+            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground">
               {editingId === msg.id ? (
                 <div className="flex w-full min-w-[240px] flex-col gap-2">
                   <textarea
@@ -155,8 +171,8 @@ const ChatWindow = ({
             <div className={cn(
               "mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:flex",
               msg.response.intent_type === 'direct_sql'
-                ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-[0_0_16px_rgba(124,58,237,0.4)]"
-                : "bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_18px_rgba(16,185,129,0.5),0_0_6px_rgba(16,185,129,0.3)]"
+                ? "border border-info-border bg-info-bg text-info-text"
+                : "bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-primary-foreground shadow-[0_0_18px_color-mix(in_srgb,var(--primary)_50%,transparent),0_0_6px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
             )}>
               {msg.response.intent_type === 'direct_sql' ? (
                 <SlidersHorizontal className="h-4 w-4" />
@@ -167,7 +183,7 @@ const ChatWindow = ({
             <div className="chat-bubble chat-bubble-ai holo-border w-full max-w-[90%] px-5 py-4">
               {msg.response.intent_type === 'direct_sql' && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <Badge className="border-violet-500/30 bg-violet-500/10 text-violet-400 font-mono text-[10px] font-bold uppercase tracking-wider">
+                  <Badge variant="info" className="font-mono text-[10px] font-bold uppercase tracking-wider">
                     Direct SQL Query
                   </Badge>
                   <span className="font-mono text-[10px] text-muted-foreground/60">(Visual Builder Execution)</span>
@@ -184,7 +200,7 @@ const ChatWindow = ({
               {/* Assistant message: amber warning for empty results, plain text for greetings */}
               {msg.response.message && !msg.response.needs_clarification && (
                 msg.response.execution_result !== null && msg.response.execution_result !== undefined ? (
-                  <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+                  <div className="mb-4 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-4 py-3 text-sm text-warning-text">
                     <span className="mt-0.5 shrink-0">⚠</span>
                     <span>{msg.response.message}</span>
                   </div>
@@ -258,7 +274,7 @@ const ChatWindow = ({
                     : guessChartConfig(chartRows);
                 if (!chartCfg || !chartCfg.type || chartCfg.type === 'none') return null;
                 return (
-                  <Suspense fallback={<div className="h-40 animate-pulse rounded-xl border border-border bg-card/40 motion-reduce:animate-none" />}>
+                  <Suspense fallback={<Skeleton className="h-40 rounded-xl" />}>
                     <DataChart
                       data={chartRows}
                       config={chartCfg as { type: string; x_axis: string; y_axis: string }}
@@ -282,7 +298,7 @@ const ChatWindow = ({
                       <button
                         key={i}
                         onClick={() => onSuggestionClick?.(q)}
-                        className="max-w-full cursor-pointer truncate rounded-full border border-border bg-foreground/[0.03] px-3 py-1.5 text-left text-xs text-foreground/85 transition-all duration-200 hover:border-primary/40 hover:bg-primary/12 hover:text-primary hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                        className="max-w-full cursor-pointer truncate rounded-full border border-border bg-foreground/[0.03] px-3 py-1.5 text-left text-xs text-foreground/85 transition-all duration-200 hover:border-primary/40 hover:bg-primary/12 hover:text-primary hover:shadow-[0_0_12px_color-mix(in_srgb,var(--primary)_15%,transparent)]"
                       >
                         {q}
                       </button>
@@ -321,27 +337,32 @@ const ChatWindow = ({
               )}
             </div>
           </div>
-        </div>
-      ))}
+        </motion.div>
+        );
+      })}
 
       {/* Optimistic user bubble — shown immediately on submit */}
       {pendingQuestion && (
-        <div className="animate-slide-up space-y-4">
+        <motion.div
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0, transition: reducedMotion ? { duration: 0.15 } : standardTransition }}
+          className="space-y-4"
+        >
           <div className="flex justify-end">
-            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground shadow-[0_8px_32px_-12px_rgba(16,185,129,0.25)]">
+            <div className="chat-bubble chat-bubble-user max-w-[80%] px-5 py-3 text-foreground">
               <p className="text-sm leading-relaxed">{pendingQuestion}</p>
               <span className="mt-1.5 block font-mono text-[10px] text-foreground/50">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Empty State */}
       {messages.length === 0 && !isLoading && !pendingQuestion && (
         <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center py-10 text-center">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 shadow-[0_0_44px_rgba(16,185,129,0.35),0_0_16px_rgba(16,185,129,0.2)] animate-pulse-glow">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 shadow-[0_0_44px_color-mix(in_srgb,var(--primary)_35%,transparent),0_0_16px_color-mix(in_srgb,var(--primary)_20%,transparent)] animate-pulse-glow">
             <Sparkles className="h-8 w-8 text-primary" />
           </div>
           <h3 className="mb-3 font-display text-2xl font-semibold tracking-tight text-gradient-hero">Ask anything about your data</h3>
@@ -353,7 +374,11 @@ const ChatWindow = ({
 
       {/* Loading / Thinking State */}
       {isLoading && (
-        <div className="flex animate-slide-up justify-start gap-3">
+        <motion.div
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0, transition: reducedMotion ? { duration: 0.15 } : standardTransition }}
+          className="flex justify-start gap-3"
+        >
           <div className="mt-1 hidden sm:flex">
             <AiOrb size="sm" />
           </div>
@@ -388,13 +413,13 @@ const ChatWindow = ({
               })}
             </ol>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Rate Limit Error */}
       {rateLimitError && (
         <div className="flex justify-start">
-          <div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-warning-border bg-warning-bg px-5 py-4 backdrop-blur-md">
+          <div className="chat-bubble max-w-[80%] rounded-2xl rounded-tl-sm border border-warning-border bg-warning-bg px-5 py-4 backdrop-blur-md">
             <div className="flex items-start gap-3">
               <Clock className="mt-0.5 h-5 w-5 shrink-0 text-warning-text" />
               <div className="flex-1">
@@ -413,7 +438,7 @@ const ChatWindow = ({
       {/* Error State */}
       {isError && !rateLimitError && (
         <div className="flex justify-start">
-          <div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-destructive-border bg-destructive-bg px-5 py-4 backdrop-blur-md">
+          <div className="chat-bubble max-w-[80%] rounded-2xl rounded-tl-sm border border-destructive-border bg-destructive-bg px-5 py-4 backdrop-blur-md">
             <div className="mb-2 flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive-text" />
               <span className="font-semibold text-destructive-text">Error</span>

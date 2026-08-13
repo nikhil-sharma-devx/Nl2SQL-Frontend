@@ -17,6 +17,7 @@ import {
   Legend,
 } from 'recharts';
 import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, Table, Download, List } from 'lucide-react';
+import { Tooltip as UiTooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 interface DataChartProps {
   data: any[];
@@ -223,11 +224,23 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
         const value = nums.length === 1 ? nums[0] : nums.reduce((a, b) => a + b, 0);
         const label = nums.length === 1 ? yAxisKey : `Total ${yAxisKey}`;
         return (
-          <div className="flex h-[260px] flex-col items-center justify-center">
-            <span className="font-display text-5xl font-bold text-foreground">
-              {Number.isFinite(value) ? value.toLocaleString() : '—'}
-            </span>
-            <span className="mt-2 text-sm text-muted-foreground">{label}</span>
+          <div className="flex h-[260px] flex-col items-center justify-center gap-3">
+            <div className="relative flex h-40 w-40 shrink-0 items-center justify-center rounded-full">
+              <div
+                className="absolute inset-0 animate-spin-slow rounded-full"
+                style={{
+                  background: 'conic-gradient(from 0deg, var(--primary), var(--chart-2), var(--primary))',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+                  animationDuration: '8s',
+                }}
+              />
+              <div className="absolute inset-[3px] rounded-full bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" />
+              <span className="relative font-display text-4xl font-bold text-foreground">
+                {Number.isFinite(value) ? value.toLocaleString() : '—'}
+              </span>
+            </div>
+            <span className="text-sm text-muted-foreground">{label}</span>
           </div>
         );
       }
@@ -246,52 +259,76 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Visualization</span>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-border bg-background/50 p-0.5">
-          <button
-            onClick={() => setActiveType('bar')}
-            className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${activeType === 'bar' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-            title="Bar Chart"
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => setActiveType('line')}
-            className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${activeType === 'line' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-            title="Line Chart"
-          >
-            <LineChartIcon className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => setActiveType('pie')}
-            className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${activeType === 'pie' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-            title="Pie Chart"
-          >
-            <PieChartIcon className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => setActiveType('table')}
-            className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${activeType === 'table' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-            title="Raw Table"
-          >
-            <Table className="h-3.5 w-3.5" />
-          </button>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setActiveType('bar')}
+                className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-xs font-semibold transition-all ${activeType === 'bar' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Bar chart</TooltipContent>
+          </UiTooltip>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setActiveType('line')}
+                className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-xs font-semibold transition-all ${activeType === 'line' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <LineChartIcon className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Line chart</TooltipContent>
+          </UiTooltip>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setActiveType('pie')}
+                className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-xs font-semibold transition-all ${activeType === 'pie' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <PieChartIcon className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Pie chart</TooltipContent>
+          </UiTooltip>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setActiveType('table')}
+                className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-xs font-semibold transition-all ${activeType === 'table' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Table className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Raw table</TooltipContent>
+          </UiTooltip>
           {(activeType === 'bar' || activeType === 'line') && (
-            <button
-              onClick={() => setShowLegend((s) => !s)}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${showLegend ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-              title={showLegend ? 'Hide legend' : 'Show legend'}
-              aria-pressed={showLegend}
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
+            <UiTooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowLegend((s) => !s)}
+                  className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-xs font-semibold transition-all ${showLegend ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  aria-pressed={showLegend}
+                >
+                  <List className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{showLegend ? 'Hide legend' : 'Show legend'}</TooltipContent>
+            </UiTooltip>
           )}
           {activeType !== 'table' && (
-            <button
-              onClick={downloadPNG}
-              className="rounded px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
-              title="Download chart as PNG"
-            >
-              <Download className="h-3.5 w-3.5" />
-            </button>
+            <UiTooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={downloadPNG}
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Download chart as PNG</TooltipContent>
+            </UiTooltip>
           )}
         </div>
       </div>

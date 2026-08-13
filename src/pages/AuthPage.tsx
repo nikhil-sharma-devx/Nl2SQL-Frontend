@@ -5,9 +5,10 @@
  * shadcn primitives, and a dual-mode (login / register) tab transition.
  * Business logic, modes, and handlers are unchanged.
  */
-import { useState, useRef, FormEvent } from 'react';
+import { useState, useRef, lazy, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { forgotPassword, resetPassword } from '../api/client';
 import {
@@ -30,8 +31,20 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import AiOrb from '@/components/AiOrb';
 import { useMagneticHover } from '@/hooks/useMagneticHover';
+import Canvas3DGuard from '@/3d/Canvas3DGuard';
+import { standardTransition } from '@/motion/variants';
+
+// The R3F hero scene (three/@react-three/fiber/drei) is heavy — keep it out
+// of AuthPage's own chunk and only fetch it if Canvas3DGuard decides to
+// render it at all (never on reduced-motion/touch/low-power/no-WebGL).
+const HeroScene = lazy(() => import('@/3d/HeroScene'));
 
 type Mode = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
+
+// Mirrors App.tsx's gating — Google Sign-In is optional, and when the client ID
+// isn't configured the entire "or continue with" block (divider + button) must
+// not render, rather than offering an option that will always fail silently.
+const GOOGLE_CLIENT_ID_CONFIGURED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 const titleByMode: Record<Mode, string> = {
   login: 'Sign In',
@@ -61,6 +74,7 @@ const AuthPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const clearError = () => setError(null);
+  const reducedMotion = useReducedMotion();
 
   const submitBtnRef = useMagneticHover<HTMLButtonElement>();
   const googleBtnRef = useMagneticHover<HTMLDivElement>();
@@ -166,22 +180,30 @@ const AuthPage = () => {
       onMouseMove={handleSpotlightMove}
       onMouseLeave={handleSpotlightLeave}
     >
-      <div className="auth-blob auth-blob-1" />
-      <div className="auth-blob auth-blob-2" />
-      <div className="auth-blob auth-blob-3" />
+      <Canvas3DGuard
+        fallback={
+          <>
+            <div className="auth-blob auth-blob-1" />
+            <div className="auth-blob auth-blob-2" />
+            <div className="auth-blob auth-blob-3" />
+            <div className="pointer-events-none absolute right-[8%] top-1/2 hidden -translate-y-1/2 opacity-50 lg:block">
+              <AiOrb size="lg" />
+            </div>
+          </>
+        }
+      >
+        <HeroScene />
+      </Canvas3DGuard>
       <div
         ref={spotlightRef}
         className="pointer-events-none fixed left-0 top-0 z-0 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity duration-300"
-        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.10), transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--primary) 10%, transparent), transparent 70%)' }}
         aria-hidden="true"
       />
-      <div className="pointer-events-none absolute right-[8%] top-1/2 hidden -translate-y-1/2 opacity-50 lg:block">
-        <AiOrb size="lg" />
-      </div>
 
       <div className="relative z-10 w-full max-w-[420px] animate-slide-up rounded-3xl border border-border/80 bg-popover/82 p-8 shadow-[0_40px_140px_-20px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-2xl">
         <div className="mb-7 flex items-center gap-3.5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-emerald-400 text-primary-foreground shadow-[0_0_36px_rgba(16,185,129,0.65),0_0_12px_rgba(16,185,129,0.4)] glow-primary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-primary-foreground glow-primary">
             <TerminalSquare className="h-6 w-6" strokeWidth={2.3} />
           </div>
           <div>
@@ -192,6 +214,13 @@ const AuthPage = () => {
           </div>
         </div>
 
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={mode}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0, transition: reducedMotion ? { duration: 0.15 } : standardTransition }}
+          exit={reducedMotion ? { opacity: 0, transition: { duration: 0.15 } } : { opacity: 0, y: -8, transition: { ...standardTransition, duration: 0.22 } }}
+        >
         {(mode === 'login' || mode === 'register') && (
           <Tabs
             value={mode}
@@ -236,7 +265,7 @@ const AuthPage = () => {
             className={cn(
               'mb-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm',
               isErrorBanner
-                ? 'animate-shake border-rose-500/30 bg-rose-500/10 text-rose-300'
+                ? 'animate-shake border-destructive-border bg-destructive-bg text-destructive-text'
                 : 'border-primary/30 bg-primary/10 text-primary',
             )}
           >
@@ -388,7 +417,7 @@ const AuthPage = () => {
           )}
         </form>
 
-        {(mode === 'login' || mode === 'register') && (
+        {(mode === 'login' || mode === 'register') && GOOGLE_CLIENT_ID_CONFIGURED && (
           <>
             <div className="my-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground/80">
               <span className="h-px flex-1 bg-border" />
@@ -438,6 +467,8 @@ const AuthPage = () => {
             </button>
           </p>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

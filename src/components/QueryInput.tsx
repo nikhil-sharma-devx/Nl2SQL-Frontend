@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Send, AlertCircle, CornerDownLeft, Zap, SlidersHorizontal, Network, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useMagneticHover } from '@/hooks/useMagneticHover';
+import { springLift } from '@/motion/variants';
 import { getVisualizeSchema } from '../api/client';
 import { getSuggestions } from '../utils/autocomplete';
 import DatabaseSelector from './DatabaseSelector';
+
+const MotionButton = motion.create(Button);
 
 const dialects = [
   { value: 'postgresql', label: 'PostgreSQL' },
@@ -54,6 +58,7 @@ const QueryInput = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitBtnRef = useMagneticHover<HTMLButtonElement>();
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -150,13 +155,14 @@ const QueryInput = ({
           <textarea
             ref={textareaRef}
             id="query-input"
+            aria-label="Ask a question about your database"
             value={question}
             onChange={(e) => handleTextChange(e.target.value)}
             placeholder="Ask a question about your database… e.g. 'Show me all users who signed up last month'"
             className={cn(
               'w-full resize-none rounded-xl border bg-background/60 px-4 py-3.5 text-sm text-foreground shadow-inner transition-all placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2',
               validationError
-                ? 'border-rose-500/50 focus:border-rose-500/60 focus:ring-rose-500/20'
+                ? 'border-destructive-border focus:border-destructive-text/60 focus:ring-destructive-border'
                 : 'border-border focus:border-primary/50 focus:ring-primary/20',
             )}
             style={{ minHeight: '52px' }}
@@ -208,7 +214,7 @@ const QueryInput = ({
           )}
 
           {validationError && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-400">
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-destructive-text">
               <AlertCircle className="h-3.5 w-3.5" />
               {validationError}
             </p>
@@ -238,15 +244,18 @@ const QueryInput = ({
             </div>
 
             {/* Execute Toggle */}
-            <button
+            <motion.button
               type="button"
               onClick={() => !isLoading && onExecuteChange(!execute)}
               disabled={isLoading}
               aria-pressed={execute}
+              whileHover={reducedMotion ? undefined : { scale: 1.02 }}
+              whileTap={reducedMotion ? undefined : { scale: 0.96 }}
+              transition={springLift}
               className={cn(
-                'group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all',
+                'group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
                 execute
-                  ? 'border-primary/40 bg-primary/10 text-primary shadow-[0_0_14px_rgba(16,185,129,0.18)]'
+                  ? 'border-primary/40 bg-primary/10 text-primary shadow-[0_0_14px_color-mix(in_srgb,var(--primary)_18%,transparent)]'
                   : 'border-border bg-background/60 text-muted-foreground hover:text-foreground',
               )}
             >
@@ -257,7 +266,7 @@ const QueryInput = ({
                   on
                 </span>
               )}
-            </button>
+            </motion.button>
 
             <span className="font-mono text-[10px] text-muted-foreground/50 whitespace-nowrap">
               {messageCount} msg{messageCount !== 1 ? 's' : ''}
@@ -277,8 +286,8 @@ const QueryInput = ({
               className={cn(
                 'gap-2',
                 showGraph
-                  ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
-                  : 'border-violet-500/20 text-violet-400 hover:bg-violet-500/10 hover:text-violet-300',
+                  ? 'border-info-border bg-info-bg text-info-text'
+                  : 'border-info-border/50 text-info-text/80 hover:bg-info-bg hover:text-info-text',
               )}
               title="Toggle Schema Graph"
             >
@@ -290,10 +299,10 @@ const QueryInput = ({
               variant="outline"
               onClick={onToggleQueryBuilder}
               disabled={isLoading}
-              className="gap-2 border-violet-500/20 text-violet-400 hover:bg-violet-500/10 hover:text-violet-300"
+              className="gap-2 border-info-border/50 text-info-text/80 hover:bg-info-bg hover:text-info-text"
               title="Open Visual Query Builder"
             >
-              <SlidersHorizontal className="h-4 w-4 text-violet-400" />
+              <SlidersHorizontal className="h-4 w-4" />
               <span className="hidden sm:inline">Visual Builder</span>
             </Button>
             {isLoading ? (
@@ -306,16 +315,18 @@ const QueryInput = ({
                 Stop
               </Button>
             ) : (
-              <Button
+              <MotionButton
                 ref={submitBtnRef}
                 id="submit-query-btn"
                 type="submit"
                 disabled={question.trim().length < 3}
+                whileTap={reducedMotion ? undefined : { scale: 0.96 }}
+                transition={springLift}
                 className="px-5"
               >
                 <Send className="h-4 w-4" />
                 Submit
-              </Button>
+              </MotionButton>
             )}
           </div>
         </div>
