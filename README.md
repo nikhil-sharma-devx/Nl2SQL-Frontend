@@ -18,7 +18,6 @@ A production-grade chat interface that turns plain-English questions into SQL qu
 - [Running the App](#running-the-app)
 - [Project Structure](#project-structure)
 - [Key Pages & Capabilities](#key-pages--capabilities)
-- [Docker](#docker)
 - [Deployment](#deployment)
 - [Contributing](#contributing)
 - [License](#license)
@@ -71,7 +70,6 @@ A production-grade chat interface that turns plain-English questions into SQL qu
 | Charts | Recharts | 2 |
 | Schema graph | @xyflow/react | 12 |
 | Icons | lucide-react | — |
-| Container | Docker + Nginx | node:22-alpine / nginx:1.27-alpine |
 
 ---
 
@@ -287,24 +285,6 @@ Fuzzy-searchable overlay to jump straight to any page or run a high-frequency ac
 ### Onboarding Checklist
 
 A collapsible widget (visible until all steps are complete) that tracks seven setup milestones: connecting a database, running a first query, saving a query, pinning a table, adding custom instructions, adding a glossary term, and exploring templates.
-
----
-
-## Docker
-
-A multi-stage Dockerfile builds the React app with Node 22 and serves it with Nginx:
-
-```bash
-# Build the image
-docker build -t nl2sql-frontend .
-
-# Run (expects the backend reachable at http://backend:8000 in the same network)
-docker run -p 80:80 nl2sql-frontend
-```
-
-The Nginx config (`nginx.conf`) proxies `/api/*` and `/auth/*` to the backend and serves the SPA with a catch-all `try_files` rule. SSE streaming is supported via `proxy_buffering off`.
-
-For a full stack with docker-compose, point the backend service name to `backend` (the default in `nginx.conf`) or override `NGINX_BACKEND_HOST`.
 
 ---
 

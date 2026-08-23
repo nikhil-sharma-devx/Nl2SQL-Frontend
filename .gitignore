@@ -44,3 +44,8 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal-only docs — kept locally, never pushed
+/docs/design/FRONTEND_3D_UI_UX_SPEC.md
+/docs/design/FRONTEND_UX_AUDIT.md
+/docs/development/FRONTEND_GUIDE.md
