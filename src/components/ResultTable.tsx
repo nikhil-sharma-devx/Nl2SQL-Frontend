@@ -56,7 +56,21 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
     );
   }
 
-  if (!displayResult) return null;
+  // No execution result yet: if SQL was generated for this turn, say so explicitly
+  // rather than leaving a silent gap under the SQL block; a purely conversational
+  // reply (no SQL at all) correctly renders nothing here.
+  if (!displayResult) {
+    if (!response.sql) return null;
+    return (
+      <EmptyState
+        icon={Play}
+        title="Not run yet"
+        description="This SQL hasn't been executed. Run it to see results here."
+        compact
+        className="mb-4"
+      />
+    );
+  }
 
   // Empty results
   if (displayResult.length === 0) {
@@ -331,7 +345,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
               aria-label="Rows per page"
               value={rowsPerPage === 0 ? 'all' : String(rowsPerPage)}
               onChange={(e) => handleRowsPerPageChange(e.target.value)}
-              className="cursor-pointer bg-transparent font-mono text-xs text-foreground focus:outline-none [&>option]:bg-popover"
+              className="cursor-pointer bg-transparent font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 rounded [&>option]:bg-popover"
             >
               <option value="10">10</option>
               <option value="25">25</option>
@@ -368,7 +382,7 @@ const ResultTable = ({ response, editedResult }: ResultTableProps) => {
                     onClick={() => setCurrentPage(pageNum)}
                     className={`h-[44px] w-[44px] rounded-md font-mono text-xs transition-all ${
                       currentPage === pageNum
-                        ? 'border border-primary/30 bg-primary/20 text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--primary)_20%,transparent)]'
+                        ? 'glow-primary-xs border border-primary/30 bg-primary/20 text-primary'
                         : 'bg-transparent text-muted-foreground hover:bg-foreground/5'
                     }`}
                   >

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { ChevronLeft, ChevronRight, Pencil, Play, Check, X, Code2, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Play, Check, X, Code2, Copy, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { standardTransition } from '@/motion/variants';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -134,6 +134,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
             <TooltipTrigger asChild>
               <button
                 onClick={handleCopy}
+                aria-label={copied ? 'SQL copied' : 'Copy SQL'}
                 className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
@@ -161,6 +162,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setIsEditing(false)}
+                      aria-label="Cancel editing"
                       className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -185,12 +187,17 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
       {/* SQL Code Display */}
       <div className="relative overflow-hidden">
         {isEditing ? (
-          <textarea
-            value={editedSql}
-            onChange={(e) => setEditedSql(e.target.value)}
-            className="h-48 w-full resize-y bg-card p-4 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            spellCheck={false}
-          />
+          <>
+            <textarea
+              value={editedSql}
+              onChange={(e) => setEditedSql(e.target.value)}
+              className="h-48 w-full resize-y bg-card p-4 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              spellCheck={false}
+            />
+            <p className="flex items-center gap-1.5 border-t border-border bg-foreground/[0.02] px-4 py-2 font-mono text-[10px] text-muted-foreground">
+              <ShieldCheck className="h-3 w-3 shrink-0" /> Edits still run against a read-only connection — writes and schema changes are blocked.
+            </p>
+          </>
         ) : (
           <AnimatePresence mode="wait" custom={direction} initial={false}>
             <motion.div
@@ -266,7 +273,7 @@ const VersionedSQLDisplay = ({ versions, onReRun, isRunning }: VersionedSQLDispl
                   }}
                   className={`h-1.5 flex-1 rounded-full transition-all ${
                     idx === currentIndex
-                      ? 'bg-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_60%,transparent)]'
+                      ? 'glow-primary-xs bg-primary'
                       : idx < currentIndex
                       ? 'bg-primary/40'
                       : 'bg-foreground/10'

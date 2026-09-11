@@ -18,6 +18,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { toast } from '@/components/ui/toast';
 import {
   exportQuery,
@@ -190,15 +191,11 @@ const ExportShareControls = ({ response }: Props) => {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Link expiration</label>
-                <select
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value)}
-                  className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground focus:outline-none [&>option]:bg-popover"
-                >
+                <Select value={expiry} onChange={(e) => setExpiry(e.target.value)}>
                   {EXPIRY_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <Button onClick={handleCreate} disabled={creating}>
                 {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}

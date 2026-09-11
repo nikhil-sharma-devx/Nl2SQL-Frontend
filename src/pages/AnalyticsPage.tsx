@@ -498,7 +498,7 @@ export default function AnalyticsPage() {
           {show('latency_breakdown') && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Gauge className="h-4 w-4 text-violet-text" /> Pipeline Latency Breakdown</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Gauge className="h-4 w-4 text-violet-text" /> Query Latency Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
                 {latency && latency.samples > 0 ? (

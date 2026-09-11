@@ -209,6 +209,20 @@
       0 0 14px color-mix(in srgb, var(--primary) 30%, transparent),
       0 0 5px color-mix(in srgb, var(--primary) 18%, transparent);
   }
+  /* Smallest tier — tiny icon-badge accents (numbered steps, avatar rings)
+     that glow-primary-sm is too strong for. */
+  .glow-primary-xs {
+    box-shadow:
+      0 0 8px color-mix(in srgb, var(--primary) 30%, transparent),
+      0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  /* Reserved for the single active-nav-item indicator — deliberately more
+     saturated than glow-primary-sm; not for general reuse (10% accent rule). */
+  .glow-primary-strong {
+    box-shadow:
+      0 0 14px color-mix(in srgb, var(--primary) 80%, transparent),
+      0 0 5px color-mix(in srgb, var(--primary) 50%, transparent);
+  }
   .glow-cyan {
     box-shadow:
       0 0 20px color-mix(in srgb, var(--chart-2) 35%, transparent),

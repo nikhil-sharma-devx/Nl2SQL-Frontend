@@ -1,19 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Check } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { FormMessage } from '../../components/ui/form-message';
+import { SavedBadge } from '../../components/ui/saved-badge';
 import InfoTip from '../../components/InfoTip';
-
-function SavedBadge({ show }: { show: boolean }) {
-  if (!show) return null;
-  return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary animate-fade-in">
-      <Check className="h-3.5 w-3.5" /> Saved
-    </span>
-  );
-}
 
 type RadioGroupProps = {
   label: string;

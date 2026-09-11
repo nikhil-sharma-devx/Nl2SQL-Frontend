@@ -527,7 +527,7 @@ export default function HelpPage() {
     <div ref={contentRef} className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       {/* Hero */}
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 shadow-[0_0_36px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
+        <div className="glow-primary mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
           <HelpCircle className="h-7 w-7 text-primary" />
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-gradient-hero">Help &amp; Documentation</h1>

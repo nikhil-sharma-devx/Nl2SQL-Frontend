@@ -36,8 +36,6 @@ import {
   getMetrics,
   getTemplates,
   getSavedQueries,
-  getSessions,
-  checkHealth,
   type Schedule,
   type Metric,
   type DashboardSummary,
@@ -46,6 +44,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useConnections } from '@/context/ConnectionContext';
 import { useCommandPalette } from '@/context/CommandPaletteContext';
+import { useHealthCheck } from '@/hooks/useHealthCheck';
+import { useRecentSessions } from '@/hooks/useRecentSessions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,17 +109,9 @@ export default function HomePage() {
     queryFn: () => getUsage('today'),
   });
 
-  const { data: isHealthy = true } = useQuery({
-    queryKey: ['health'],
-    queryFn: checkHealth,
-    staleTime: 20_000,
-  });
+  const isHealthy = useHealthCheck();
 
-  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
-    queryKey: ['sessions', 'recent'],
-    queryFn: () => getSessions(50, 0),
-    enabled: !!user,
-  });
+  const { data: sessionsData, isLoading: sessionsLoading } = useRecentSessions();
 
   const { data: dashboardsData, isLoading: dashboardsLoading } = useQuery({
     queryKey: ['dashboards', 'home'],

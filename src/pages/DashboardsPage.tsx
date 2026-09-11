@@ -18,6 +18,7 @@ import {
 import { toast } from '../components/ui/toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
 import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { FormMessage } from '@/components/ui/form-message';
@@ -189,15 +190,15 @@ function DashboardDetail({ dashboardId, onBack }: { dashboardId: string; onBack:
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="truncate font-medium text-foreground">{w.title}</p>
                   <div className="flex items-center gap-1.5">
-                    <select
+                    <Select
+                      uiSize="sm"
                       value={w.chart_type}
                       onChange={(e) => chartTypeMutation.mutate({ widgetId: w.id, chartType: e.target.value })}
-                      className="rounded-lg border border-border bg-background/60 px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
                       title="Chart type"
                       aria-label="Chart type"
                     >
                       {CHART_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    </Select>
                     {deleteWidgetConfirmId === w.id ? (
                       <>
                         <button

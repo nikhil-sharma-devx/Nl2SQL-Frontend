@@ -133,6 +133,7 @@ function ProviderCard({
           <input
             type={show ? 'text' : 'password'}
             placeholder={item.has_user_key ? 'Replace existing key…' : 'Paste your API key…'}
+            aria-label={`${item.label} API key`}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
@@ -227,11 +228,15 @@ export default function ProfileModal({ open, onClose }: Props) {
   const initial = (user?.full_name ?? user?.email ?? 'U')[0].toUpperCase();
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Decorative click-to-dismiss layer, kept separate from the dialog below
+          so aria-hidden here never shadows the actual dialog content from AT. */}
+      <div
+        ref={overlayRef}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+        onClick={handleOverlayClick}
+        aria-hidden="true"
+      />
       <div
         ref={contentRef}
         role="dialog"
@@ -243,7 +248,7 @@ export default function ProfileModal({ open, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary text-primary-foreground font-bold text-lg shadow-[0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]">
+            <div className="glow-primary-sm flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary text-primary-foreground font-bold text-lg">
               {initial}
             </div>
             <div>

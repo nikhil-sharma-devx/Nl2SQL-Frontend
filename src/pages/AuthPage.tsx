@@ -19,6 +19,7 @@ import {
   EyeOff,
   Sparkles,
   AlertCircle,
+  CheckCircle2,
   KeyRound,
   RefreshCw,
   ArrowLeft,
@@ -71,9 +72,13 @@ const AuthPage = () => {
   const [otpCode, setOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const clearError = () => setError(null);
+  // A discriminated banner (rather than sniffing the message text for words
+  // like "success"/"sent") so a future backend message can never flip an
+  // error into success styling by accident.
+  const [banner, setBanner] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const setError = (text: string) => setBanner({ type: 'error', text });
+  const setSuccess = (text: string) => setBanner({ type: 'success', text });
+  const clearError = () => setBanner(null);
   const reducedMotion = useReducedMotion();
 
   const submitBtnRef = useMagneticHover<HTMLButtonElement>();
@@ -92,7 +97,7 @@ const AuthPage = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
+    clearError();
 
     if (mode === 'register' && password !== confirmPassword) {
       setError('Passwords do not match');
@@ -108,11 +113,11 @@ const AuthPage = () => {
       if (mode === 'forgot') {
         await forgotPassword(email);
         setMode('reset');
-        setError(null);
+        clearError();
       } else if (mode === 'reset') {
         await resetPassword(email, otpCode, password);
         setMode('login');
-        setError('Password reset successfully. Please sign in with your new password.');
+        setSuccess('Password reset successfully. Please sign in with your new password.');
         setPassword('');
       } else if (mode === 'verify') {
         await verifyOTP(email, otpCode);
@@ -123,7 +128,7 @@ const AuthPage = () => {
       } else {
         await register(email, password, fullName || undefined);
         setMode('verify');
-        setError(null);
+        clearError();
       }
     } catch (err: unknown) {
       const msg =
@@ -143,10 +148,10 @@ const AuthPage = () => {
 
   const handleResendOTP = async () => {
     setIsLoading(true);
-    setError(null);
+    clearError();
     try {
       await resendOTP(email);
-      setError('A new verification code has been sent to your email.');
+      setSuccess('A new verification code has been sent to your email.');
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
@@ -160,7 +165,7 @@ const AuthPage = () => {
   const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) return;
     setIsLoading(true);
-    setError(null);
+    clearError();
     try {
       await googleLogin(credentialResponse.credential);
       navigate(redirectTo);
@@ -170,9 +175,6 @@ const AuthPage = () => {
       setIsLoading(false);
     }
   };
-
-  const isErrorBanner =
-    !!error && !error.toLowerCase().includes('success') && !error.toLowerCase().includes('sent');
 
   return (
     <div
@@ -260,17 +262,22 @@ const AuthPage = () => {
           </div>
         )}
 
-        {error && (
+        {banner && (
           <div
+            role="alert"
             className={cn(
               'mb-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm',
-              isErrorBanner
+              banner.type === 'error'
                 ? 'animate-shake border-destructive-border bg-destructive-bg text-destructive-text'
-                : 'border-primary/30 bg-primary/10 text-primary',
+                : 'border-success-border bg-success-bg text-success-text',
             )}
           >
-            <AlertCircle size={16} className="shrink-0" />
-            <span>{error}</span>
+            {banner.type === 'error' ? (
+              <AlertCircle size={16} className="shrink-0" />
+            ) : (
+              <CheckCircle2 size={16} className="shrink-0" />
+            )}
+            <span>{banner.text}</span>
           </div>
         )}
 

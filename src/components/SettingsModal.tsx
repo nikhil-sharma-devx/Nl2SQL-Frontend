@@ -74,18 +74,22 @@ export default function SettingsModal({ open, onClose }: Props) {
   };
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Decorative click-to-dismiss layer, kept separate from the dialog below
+          so aria-hidden here never shadows the actual dialog content from AT. */}
+      <div
+        ref={overlayRef}
+        onClick={handleOverlayClick}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+        aria-hidden="true"
+      />
       <div
         ref={contentRef}
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="relative flex h-[86vh] max-h-[760px] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border bg-popover shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] animate-slide-up focus:outline-none"
+        className="shadow-depth-4 relative flex h-[86vh] max-h-[760px] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border bg-popover animate-slide-up focus:outline-none"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-4 sm:px-6">
@@ -116,7 +120,7 @@ export default function SettingsModal({ open, onClose }: Props) {
               className={cn(
                 'shrink-0 snap-start cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                 tab === id
-                  ? 'bg-gradient-to-r from-primary/20 to-primary/20 text-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_30%,transparent)]'
+                  ? 'bg-gradient-to-r from-primary/20 to-primary/20 text-foreground ring-1 ring-inset ring-primary/30'
                   : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]',
               )}
             >
@@ -139,7 +143,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                 className={cn(
                   'w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   tab === id
-                    ? 'bg-gradient-to-r from-primary/20 to-primary/20 text-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_30%,transparent)]'
+                    ? 'bg-gradient-to-r from-primary/20 to-primary/20 text-foreground ring-1 ring-inset ring-primary/30'
                     : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]',
                 )}
               >

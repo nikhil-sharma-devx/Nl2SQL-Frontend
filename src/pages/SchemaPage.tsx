@@ -357,7 +357,13 @@ function SchemaTablesSection() {
             {filtered.map(t => {
               const isOpen = expanded.has(t.id);
               return (
-                <div key={t.id} className="glass-card rounded-lg">
+                <div
+                  key={t.id}
+                  className={cn(
+                    'glass-card rounded-lg transition-colors',
+                    isOpen && 'border-primary/30 bg-primary/[0.04]',
+                  )}
+                >
                   <div className="flex items-center gap-2 px-3 py-2.5">
                     <button
                       onClick={() => toggleExpand(t)}

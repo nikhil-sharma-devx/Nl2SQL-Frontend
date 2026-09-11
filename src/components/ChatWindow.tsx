@@ -36,6 +36,7 @@ import FeedbackPanel from './FeedbackPanel';
 import AddToDashboardModal from './AddToDashboardModal';
 // recharts is heavy — load it only when a message actually has a chart
 const DataChart = lazy(() => import('./DataChart'));
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -172,7 +173,7 @@ const ChatWindow = ({
               "mt-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:flex",
               msg.response.intent_type === 'direct_sql'
                 ? "border border-info-border bg-info-bg text-info-text"
-                : "bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-primary-foreground shadow-[0_0_18px_color-mix(in_srgb,var(--primary)_50%,transparent),0_0_6px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
+                : "glow-primary-sm bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-primary-foreground"
             )}>
               {msg.response.intent_type === 'direct_sql' ? (
                 <SlidersHorizontal className="h-4 w-4" />
@@ -200,10 +201,9 @@ const ChatWindow = ({
               {/* Assistant message: amber warning for empty results, plain text for greetings */}
               {msg.response.message && !msg.response.needs_clarification && (
                 msg.response.execution_result !== null && msg.response.execution_result !== undefined ? (
-                  <div className="mb-4 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-4 py-3 text-sm text-warning-text">
-                    <span className="mt-0.5 shrink-0">⚠</span>
-                    <span>{msg.response.message}</span>
-                  </div>
+                  <Alert variant="warning" icon={AlertTriangle} className="mb-4">
+                    {msg.response.message}
+                  </Alert>
                 ) : (
                   <div className="mb-4 leading-relaxed text-foreground/85">{msg.response.message}</div>
                 )
@@ -226,20 +226,17 @@ const ChatWindow = ({
 
               {/* Validation Errors */}
               {!msg.response.is_valid && (msg.response.validation_errors?.length ?? 0) > 0 && (
-                <div className="mb-4 rounded-xl border border-destructive-border bg-destructive-bg p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive-text" />
-                    <span className="text-sm font-semibold text-destructive-text">Validation Errors</span>
-                  </div>
+                <Alert variant="destructive" icon={AlertTriangle} className="mb-4">
+                  <span className="mb-2 block font-semibold">Validation Errors</span>
                   <ul className="space-y-1">
                     {(msg.response.validation_errors ?? []).map((err, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-destructive-text/90">
-                        <span className="text-destructive-text">•</span>
+                      <li key={idx} className="flex items-start gap-2">
+                        <span>•</span>
                         {err}
                       </li>
                     ))}
                   </ul>
-                </div>
+                </Alert>
               )}
 
               {/* Used Tables */}
@@ -298,7 +295,7 @@ const ChatWindow = ({
                       <button
                         key={i}
                         onClick={() => onSuggestionClick?.(q)}
-                        className="max-w-full cursor-pointer truncate rounded-full border border-border bg-foreground/[0.03] px-3 py-1.5 text-left text-xs text-foreground/85 transition-all duration-200 hover:border-primary/40 hover:bg-primary/12 hover:text-primary hover:shadow-[0_0_12px_color-mix(in_srgb,var(--primary)_15%,transparent)]"
+                        className="max-w-full cursor-pointer truncate rounded-full border border-border bg-foreground/[0.03] px-3 py-1.5 text-left text-xs text-foreground/85 transition-all duration-200 hover:border-primary/40 hover:bg-primary/12 hover:text-primary hover:glow-primary-xs"
                       >
                         {q}
                       </button>
@@ -362,7 +359,7 @@ const ChatWindow = ({
       {/* Empty State */}
       {messages.length === 0 && !isLoading && !pendingQuestion && (
         <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center py-10 text-center">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 shadow-[0_0_44px_color-mix(in_srgb,var(--primary)_35%,transparent),0_0_16px_color-mix(in_srgb,var(--primary)_20%,transparent)] animate-pulse-glow">
+          <div className="glow-primary mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 animate-pulse-glow">
             <Sparkles className="h-8 w-8 text-primary" />
           </div>
           <h3 className="mb-3 font-display text-2xl font-semibold tracking-tight text-gradient-hero">Ask anything about your data</h3>

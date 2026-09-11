@@ -17,6 +17,7 @@ import { useConnections } from '../context/ConnectionContext';
 import { toast } from '../components/ui/toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -237,30 +238,28 @@ export default function SchedulesPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <select
+            <Select
               aria-label="Connection"
               value={connectionId || activeConnectionId || ''}
               onChange={(e) => setConnectionId(e.target.value)}
-              className="rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
             >
               {connections.map((c) => (
                 <option key={c.connection_id} value={c.connection_id}>
                   {c.name}
                 </option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               aria-label="Email notification condition"
               value={notifyCondition}
               onChange={(e) => setNotifyCondition(e.target.value as typeof notifyCondition)}
-              className="rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
             >
               {NOTIFY_CONDITIONS.map((n) => (
                 <option key={n.value} value={n.value}>
                   Email me: {n.label}
                 </option>
               ))}
-            </select>
+            </Select>
             <Button
               size="sm"
               onClick={() => createMutation.mutate()}

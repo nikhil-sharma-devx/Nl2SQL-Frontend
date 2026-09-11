@@ -1,21 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { getRagConfig, updateRagConfig, type RagConfig } from '../../api/client';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { FormMessage } from '../../components/ui/form-message';
+import { SavedBadge } from '../../components/ui/saved-badge';
 import { cn } from '@/lib/utils';
 import InfoTip from '../../components/InfoTip';
-
-function SavedBadge({ show }: { show: boolean }) {
-  if (!show) return null;
-  return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary animate-fade-in">
-      <Check className="h-3.5 w-3.5" /> Saved
-    </span>
-  );
-}
 
 function Toggle({
   id,
