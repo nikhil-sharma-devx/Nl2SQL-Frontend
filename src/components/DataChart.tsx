@@ -16,8 +16,9 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, Table, Download, List } from 'lucide-react';
+import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, Table, Download, List, Inbox } from 'lucide-react';
 import { Tooltip as UiTooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface DataChartProps {
   data: any[];
@@ -113,7 +114,14 @@ const DataChart: React.FC<DataChartProps> = ({ data, config }) => {
   }, [config]);
 
   if (!data || data.length === 0) {
-    return null;
+    return (
+      <EmptyState
+        icon={Inbox}
+        title="No data to chart"
+        description="This result set has no rows, so there's nothing to visualize."
+        compact
+      />
+    );
   }
 
   const keys = Object.keys(data[0]);

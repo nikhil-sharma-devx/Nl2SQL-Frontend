@@ -556,19 +556,19 @@ export default function TrainingPage() {
         <CardContent className="px-4 pb-4">
           <ol className="space-y-2 text-sm text-foreground/80">
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">1</span>
+              <span className="glow-primary-xs flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary">1</span>
               <span><strong className="text-foreground">Data collection</strong> — every successful query you run is automatically saved to the training dataset.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">2</span>
+              <span className="glow-primary-xs flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary">2</span>
               <span><strong className="text-foreground">Download (free)</strong> — export your data as a JSONL file and use it anywhere: Google Colab, Hugging Face AutoTrain, or local fine-tuning with Unsloth.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">3</span>
+              <span className="glow-primary-xs flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary">3</span>
               <span><strong className="text-foreground">Cloud fine-tune (paid)</strong> — if you have a Together AI or OpenAI API key, you can submit the job directly from here. Together AI charges per token trained.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_30%,transparent)]">4</span>
+              <span className="glow-primary-xs flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 font-mono text-[11px] font-bold text-primary">4</span>
               <span><strong className="text-foreground">Deploy</strong> — once a cloud job succeeds, hot-swap the running model to your fine-tuned version with no server restart.</span>
             </li>
           </ol>

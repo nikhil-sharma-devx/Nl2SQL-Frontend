@@ -298,7 +298,7 @@ export default function SchemaGraph3D({ highlightedTables = [] }: SchemaGraph3DP
 
       {/* Detail panel for the clicked table */}
       {selected && (
-        <div className="absolute bottom-4 right-4 z-10 max-h-[60%] w-72 overflow-hidden rounded-xl border border-border bg-popover/95 shadow-[0_20px_60px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+        <div className="shadow-depth-3 absolute bottom-4 right-4 z-10 max-h-[60%] w-72 overflow-hidden rounded-xl border border-border bg-popover/95 backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-border bg-foreground/[0.04] px-3.5 py-2.5">
             <span className="font-display text-sm font-bold text-foreground">{selected.name}</span>
             <button onClick={() => setSelectedTable(null)} className="text-muted-foreground transition-colors hover:text-foreground">
@@ -353,8 +353,8 @@ export default function SchemaGraph3D({ highlightedTables = [] }: SchemaGraph3DP
         </div>
         {createPortal(
           <div className="fixed inset-0 z-50 flex flex-col">
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsFullscreen(false)} />
-            <div className="relative z-10 m-4 flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-[0_0_60px_rgba(139,92,246,0.15)]">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsFullscreen(false)} aria-hidden="true" />
+            <div className="relative z-10 m-4 flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-[0_0_60px_color-mix(in_srgb,var(--chart-4)_15%,transparent)]">
               {content(true)}
             </div>
           </div>,

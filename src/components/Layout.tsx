@@ -32,6 +32,8 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useHealthCheck } from '@/hooks/useHealthCheck';
+import { useRecentSessions } from '@/hooks/useRecentSessions';
 import ModelSwitcher from './ModelSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
 import ProfileModal from './ProfileModal';
@@ -43,7 +45,7 @@ import { useCommandPalette } from '@/context/CommandPaletteContext';
 import { useMagneticHover } from '@/hooks/useMagneticHover';
 import PageTransition from '@/motion/PageTransition';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { getSessions, checkHealth, getNotificationPrefs, type SessionListResponse } from '../api/client';
+import { getNotificationPrefs, type SessionListResponse } from '../api/client';
 import { setInAppNotificationsEnabled } from './ui/toast';
 
 /** A single session row as returned by the sessions list endpoint. */
@@ -260,21 +262,8 @@ const Layout = () => {
     [sidebarWidth],
   );
 
-  const { data: sessionsData } = useQuery({
-    queryKey: ['sessions', 'recent'],
-    queryFn: () => getSessions(50, 0),
-    refetchInterval: 30_000,
-    enabled: !!user,
-    retry: false,
-  });
-
-  const { data: isHealthy = true } = useQuery({
-    queryKey: ['health'],
-    queryFn: checkHealth,
-    refetchInterval: 30_000,
-    retry: false,
-    staleTime: 20_000,
-  });
+  const { data: sessionsData } = useRecentSessions();
+  const isHealthy = useHealthCheck();
 
   // Keep the toast layer in sync with the user's In-App Notifications preference.
   // Shares the ['notification-prefs'] cache key with the Settings panel, so
@@ -395,7 +384,7 @@ const Layout = () => {
               <button
                 ref={newChatBtnRef}
                 onClick={() => { navigate('/query', { state: { newChat: true } }); setMobileOpen(false); }}
-                className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:shadow-[0_0_16px_color-mix(in_srgb,var(--primary)_15%,transparent)]"
+                className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-gradient-to-r from-primary/18 to-primary/10 px-3.5 py-2.5 text-sm font-semibold text-foreground transition-all hover:border-primary/50 hover:from-primary/28 hover:to-primary/18 hover:glow-primary-sm"
               >
                 <span className="flex items-center gap-2.5">
                   <SquarePen className="h-4 w-4 text-primary" />
@@ -421,6 +410,7 @@ const Layout = () => {
                 <input
                   type="text"
                   placeholder="Search chats…"
+                  aria-label="Search chats"
                   value={chatSearch}
                   onChange={(e) => setChatSearch(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background/50 py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/20"
@@ -479,7 +469,7 @@ const Layout = () => {
                       <>
                         {/* Active indicator — bar on left (expanded) or dot on bottom (collapsed) */}
                         {isActive && !isIconMode && (
-                          <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)] shadow-[0_0_14px_color-mix(in_srgb,var(--primary)_80%,transparent),0_0_5px_color-mix(in_srgb,var(--primary)_50%,transparent)]" />
+                          <span className="glow-primary-strong absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)]" />
                         )}
                         {isActive && isIconMode && (
                           <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
@@ -535,7 +525,7 @@ const Layout = () => {
                       {({ isActive }) => (
                         <>
                           {isActive && !isIconMode && (
-                            <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)] shadow-[0_0_14px_color-mix(in_srgb,var(--primary)_80%,transparent),0_0_5px_color-mix(in_srgb,var(--primary)_50%,transparent)]" />
+                            <span className="glow-primary-strong absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)]" />
                           )}
                           {isActive && isIconMode && (
                             <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
@@ -605,7 +595,7 @@ const Layout = () => {
             {/* Popover menu */}
             {userMenuOpen && (
               <div className={cn(
-                'absolute overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_8px_40px_-8px_rgba(0,0,0,0.55)] animate-slide-up z-50',
+                'shadow-depth-3 absolute overflow-hidden rounded-2xl border border-border bg-popover animate-slide-up z-50',
                 isIconMode
                   ? 'left-full bottom-0 ml-2 w-52'
                   : 'bottom-full left-2 right-2 mb-2',
@@ -659,7 +649,7 @@ const Layout = () => {
               )}
               title={isIconMode ? (user?.full_name ?? user?.email ?? 'Profile') : undefined}
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-xs font-bold text-primary-foreground shadow-[0_0_10px_color-mix(in_srgb,var(--primary)_40%,transparent)]">
+              <div className="glow-primary-xs flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[color-mix(in_srgb,var(--primary)_55%,white)] text-xs font-bold text-primary-foreground">
                 {(user?.full_name ?? user?.email ?? 'U')[0].toUpperCase()}
               </div>
               {!isIconMode && (
@@ -705,7 +695,7 @@ const Layout = () => {
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────── */}
       <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/65 px-4 py-3.5 backdrop-blur-xl shadow-[0_4px_20px_-8px_rgba(0,0,0,0.4)] md:px-6">
+        <header className="shadow-depth-1 flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/65 px-4 py-3.5 backdrop-blur-xl md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             {/* Mobile hamburger */}
             <button
@@ -730,7 +720,7 @@ const Layout = () => {
                 <TooltipContent side="bottom">Expand sidebar</TooltipContent>
               </Tooltip>
             )}
-            <span className="h-7 w-1.5 rounded-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)] shadow-[0_0_16px_color-mix(in_srgb,var(--primary)_70%,transparent),0_0_6px_color-mix(in_srgb,var(--primary)_45%,transparent)]" />
+            <span className="glow-primary-strong h-7 w-1.5 rounded-full bg-gradient-to-b from-primary to-[color-mix(in_srgb,var(--primary)_40%,white)]" />
             <div className="min-w-0">
               <h2 className="truncate font-display text-base font-semibold tracking-tight text-foreground md:text-lg">
                 {meta.title}
@@ -757,8 +747,8 @@ const Layout = () => {
                   <span
                     className={`h-2 w-2 rounded-full transition-colors ${
                       isHealthy
-                        ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]'
-                        : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+                        ? 'bg-emerald-500 shadow-[0_0_6px] shadow-emerald-500/80'
+                        : 'bg-red-500 shadow-[0_0_6px] shadow-red-500/80'
                     }`}
                   />
                   <span className="hidden font-mono text-[10px] text-muted-foreground/60 sm:block">

@@ -17,6 +17,31 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Loader2, RefreshCw, AlertTriangle, Maximize2, X } from 'lucide-react';
 import { useSchemaGraphData } from '../hooks/useSchemaGraphData';
+import { useTheme } from '../context/ThemeContext';
+import { Alert } from './ui/alert';
+
+/** React Flow's <Background>/<MiniMap> paint their `color`/`nodeColor` props as
+ * raw SVG presentation attributes, which don't parse `var(--token)` the way an
+ * inline style would — so these need concrete colors, resolved from the active
+ * theme's tokens (not a value hardcoded to one theme) and refreshed on switch. */
+function useResolvedThemeColors(theme: string) {
+  const [colors, setColors] = useState({ grid: '#1e293b', highlight: '#c8903f', dim: '#334155', mask: '#0b1119b3' });
+  useEffect(() => {
+    const styles = getComputedStyle(document.documentElement);
+    const read = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
+    const background = read('--background', '#0b1119');
+    setColors({
+      grid: read('--border', '#1e293b'),
+      highlight: read('--primary', '#c8903f'),
+      dim: read('--muted-foreground', '#334155'),
+      // --background is always an opaque 6-digit hex (see index.css) — append an
+      // alpha channel for the MiniMap's mask overlay rather than a fixed value.
+      mask: /^#[0-9a-fA-F]{6}$/.test(background) ? `${background}b3` : 'rgba(11, 17, 25, 0.7)',
+    });
+    // theme drives which values are on :root at read time — re-run on switch.
+  }, [theme]);
+  return colors;
+}
 
 // ── Custom Table Node Component ───────────────────────────────────────────────
 const TableNode = ({ data, selected }: { data: any; selected: boolean }) => {
@@ -26,10 +51,10 @@ const TableNode = ({ data, selected }: { data: any; selected: boolean }) => {
     <div
       className={`w-64 overflow-hidden rounded-xl border font-sans text-sm backdrop-blur-xl transition-all ${
         selected
-          ? 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.4)]'
+          ? 'border-violet-500 shadow-[0_0_20px] shadow-violet-500/40'
           : isHighlighted
           ? 'border-primary shadow-[0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)] ring-2 ring-primary/50'
-          : 'border-border shadow-[0_10px_30px_rgba(0,0,0,0.5)]'
+          : 'shadow-depth-2 border-border'
       } bg-popover/95`}
     >
       <Handle type="target" position={Position.Left} className="h-4 w-2 rounded-sm border-none bg-violet-500" />
@@ -122,6 +147,8 @@ function buildNodesAndEdges(schema: any, highlightedTables: string[]) {
 
 export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps) {
   const { schema, loading, error, staleWarning, refetch } = useSchemaGraphData();
+  const { theme } = useTheme();
+  const themeColors = useResolvedThemeColors(theme);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -211,16 +238,21 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
     <>
       {/* Stale data warning banner */}
       {staleWarning && (
-        <div className="absolute left-4 right-24 top-4 z-10 flex items-center gap-2 rounded-lg border border-warning-border bg-warning-bg px-4 py-2 text-xs text-warning-text backdrop-blur">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-warning-text" />
-          <span className="flex-1">{staleWarning}</span>
-          <button
-            onClick={() => refetch()}
-            className="shrink-0 rounded bg-warning-text/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-warning-text transition-colors hover:bg-warning-text/20"
-          >
-            Retry
-          </button>
-        </div>
+        <Alert
+          variant="warning"
+          icon={AlertTriangle}
+          className="absolute left-4 right-24 top-4 z-10 items-center py-2 backdrop-blur"
+        >
+          <div className="flex items-center gap-2">
+            <span className="flex-1 text-xs">{staleWarning}</span>
+            <button
+              onClick={() => refetch()}
+              className="shrink-0 rounded bg-warning-text/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-warning-text transition-colors hover:bg-warning-text/20"
+            >
+              Retry
+            </button>
+          </div>
+        </Alert>
       )}
 
       <div className="absolute right-4 top-4 z-10 flex gap-2">
@@ -262,14 +294,15 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
         defaultEdgeOptions={{ type: 'smoothstep' }}
         minZoom={0.1}
       >
-        {/* Background/MiniMap colors below are written to SVG presentation
-            attributes (fill/color), where CSS var() does NOT resolve, so they
-            stay as concrete strings. */}
-        <Background color="#1e293b" gap={24} size={2} />
+        {/* Background/MiniMap colors are written to SVG presentation attributes
+            (fill/color), where CSS var() does NOT resolve — so they're resolved
+            to concrete strings from the active theme's tokens instead (see
+            useResolvedThemeColors above), rather than hardcoded to one theme. */}
+        <Background color={themeColors.grid} gap={24} size={2} />
         <Controls className="border-border bg-card fill-foreground" />
         <MiniMap
-          nodeColor={(n) => (n.data?.isHighlighted ? '#c8903f' : '#334155')}
-          maskColor="rgba(11, 17, 25, 0.7)"
+          nodeColor={(n) => (n.data?.isHighlighted ? themeColors.highlight : themeColors.dim)}
+          maskColor={themeColors.mask}
           className="border border-border bg-card"
         />
       </ReactFlow>
@@ -301,9 +334,10 @@ export default function SchemaGraph({ highlightedTables = [] }: SchemaGraphProps
             <div
               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
               onClick={() => setIsFullscreen(false)}
+              aria-hidden="true"
             />
             {/* Graph container */}
-            <div className="relative z-10 m-4 flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-[0_0_60px_rgba(139,92,246,0.15)]">
+            <div className="relative z-10 m-4 flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-[0_0_60px_color-mix(in_srgb,var(--chart-4)_15%,transparent)]">
               {/* Title bar */}
               <div className="absolute left-4 top-4 z-10">
                 <h3 className="font-display text-sm font-semibold tracking-wide text-foreground/90">

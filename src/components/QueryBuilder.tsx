@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { SlidersHorizontal, X, Plus, Trash2, Play, Sparkles, AlertTriangle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getVisualizeSchema } from '../api/client';
 import { cn } from '@/lib/utils';
@@ -624,11 +625,11 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                               <span className="break-all leading-snug">{col.name}</span>
                             </label>
                             {isSelected && (
-                              <select
+                              <Select
+                                uiSize="xs"
                                 aria-label="Aggregation Function"
                                 value={currentSelection?.aggregation || 'NONE'}
                                 onChange={(e) => updateColumnAggregation(tableName, col.name, e.target.value as SelectedColumn['aggregation'])}
-                                className="rounded border border-border/50 bg-background/80 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground focus:outline-none"
                               >
                                 <option value="NONE">No aggregation</option>
                                 <option value="COUNT">COUNT</option>
@@ -636,7 +637,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                                 <option value="AVG">AVG</option>
                                 <option value="MIN">MIN</option>
                                 <option value="MAX">MAX</option>
-                              </select>
+                              </Select>
                             )}
                           </div>
                         );
@@ -683,27 +684,29 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                     key={filter.id}
                     className="flex flex-col gap-2 rounded-xl border border-border bg-background/25 p-3 @[480px]:flex-row @[480px]:items-center"
                   >
-                    <select
+                    <Select
+                      uiSize="sm"
+                      className="flex-1"
                       aria-label="Filter Column"
                       value={`${filter.table}.${filter.column}`}
                       onChange={(e) => {
                         const [t, c] = e.target.value.split('.');
                         updateFilter(filter.id, { table: t, column: c });
                       }}
-                      className="flex-1 rounded-lg border border-border bg-background/50 px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
                     >
                       {activeColumns.map((col) => (
                         <option key={`${col.table}.${col.column}`} value={`${col.table}.${col.column}`}>
                           {col.table}.{col.column}
                         </option>
                       ))}
-                    </select>
+                    </Select>
 
-                    <select
+                    <Select
+                      uiSize="sm"
+                      className="font-mono"
                       aria-label="Filter Operator"
                       value={filter.operator}
                       onChange={(e) => updateFilter(filter.id, { operator: e.target.value as FilterCondition['operator'] })}
-                      className="rounded-lg border border-border bg-background/50 px-2 py-1.5 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
                     >
                       <option value="=">=</option>
                       <option value="!=">!=</option>
@@ -713,7 +716,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                       <option value="<=">&lt;=</option>
                       <option value="LIKE">contains</option>
                       <option value="IN">in list</option>
-                    </select>
+                    </Select>
 
                     <input
                       type="text"
@@ -748,7 +751,9 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                 Sort Order (ORDER BY)
               </p>
               <div className="flex gap-2">
-                <select
+                <Select
+                  uiSize="sm"
+                  className="flex-1"
                   aria-label="Sort Column"
                   value={orderBy ? `${orderBy.table}.${orderBy.column}` : 'NONE'}
                   onChange={(e) => {
@@ -759,7 +764,6 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                       setOrderBy({ table: t, column: c, direction: orderBy?.direction || 'ASC' });
                     }
                   }}
-                  className="flex-1 rounded-lg border border-border bg-background/50 px-2.5 py-1.5 text-xs text-foreground focus:outline-none"
                 >
                   <option value="NONE">No sort</option>
                   {activeColumns.map((col) => (
@@ -767,7 +771,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                       {col.table}.{col.column}
                     </option>
                   ))}
-                </select>
+                </Select>
 
                 {orderBy && (
                   <button
@@ -797,7 +801,7 @@ export default function QueryBuilder({ onClose, onRunViaAi, onExecuteDirectSql }
                 max={1000}
                 value={limit || ''}
                 onChange={(e) => setLimit(e.target.value ? parseInt(e.target.value, 10) : 0)}
-                className="w-full rounded-lg border border-border bg-background/50 px-3 py-1.5 text-xs text-foreground focus:outline-none"
+                className="w-full rounded-lg border border-border bg-background/50 px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
               />
             </div>
 

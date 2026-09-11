@@ -3,7 +3,7 @@
  * (Logic unchanged; restyled with shadcn primitives.)
  */
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Check, X, Zap, Copy, Loader2, BookOpen, Send, Lightbulb, Gauge, AlertTriangle, Info } from 'lucide-react';
+import { Check, X, Zap, Copy, Loader2, BookOpen, Send, Lightbulb, Gauge, AlertTriangle, Info, ShieldCheck } from 'lucide-react';
 import type { QueryResponse } from '../types/query.types';
 import { explainSQL, getSuggestions, saveSQLVersion, executeSQL, getSQLVersions, previewSQL } from '../api/client';
 import type { QueryPreviewResponse } from '../api/client';
@@ -14,6 +14,7 @@ const VersionedSQLDisplay = lazy(() => import('./VersionedSQLDisplay'));
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import ExportShareControls from './ExportShareControls';
 
 interface SqlPreviewProps {
@@ -186,10 +187,10 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
         </Button>
 
         <Button
+          variant="secondary"
           size="sm"
           onClick={handleExplain}
           disabled={loadingExplanation}
-          className="border border-info-border bg-info-bg text-info-text shadow-none hover:bg-info-text/20"
         >
           {loadingExplanation ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Explaining…</>
@@ -199,15 +200,15 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
         </Button>
 
         <Button
+          variant="secondary"
           size="sm"
           onClick={handleLoadSuggestions}
           disabled={loadingSuggestions || suggestions.length > 0}
-          className="border border-warning-border bg-warning-bg text-warning-text shadow-none hover:bg-warning-text/20"
         >
           {loadingSuggestions ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</>
           ) : suggestions.length > 0 ? (
-            <><Check className="h-4 w-4" /> Suggestions Loaded</>
+            <><Check className="h-4 w-4 text-primary" /> Suggestions Loaded</>
           ) : (
             <><Lightbulb className="h-4 w-4" /> Get Suggestions</>
           )}
@@ -242,29 +243,40 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
           <Badge variant="violet"><Zap className="h-3 w-3" /> Cached</Badge>
         )}
 
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="secondary" tabIndex={0}>
+              <ShieldCheck className="h-3 w-3" /> Read-only
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>Every query runs against a read-only connection with a statement timeout — it can only read data, never modify it.</TooltipContent>
+        </Tooltip>
+
         <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-wide text-muted-foreground">
           <span className="font-bold text-foreground">{response.tokens_used}</span> TOKENS
         </span>
       </div>
 
-      {/* SQL Explanation */}
+      {/* SQL Explanation — a supplementary content panel, not a status alert,
+          so it takes the neutral panel treatment rather than a semantic color. */}
       {showExplanation && explanation && (
-        <div className="mt-4 rounded-xl border border-info-border bg-info-bg p-4">
+        <div className="mt-4 rounded-xl border border-border bg-foreground/[0.03] p-4">
           <div className="mb-2 flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-info-text" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-info-text">SQL Explanation</span>
+            <BookOpen className="h-4 w-4 text-primary" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">SQL Explanation</span>
           </div>
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{explanation}</p>
         </div>
       )}
 
-      {/* Query Cost / Row-Count Preview */}
+      {/* Query Cost / Row-Count Preview — neutral panel; only genuine warnings
+          inside it (below) keep the semantic warning color. */}
       {preview && (
         preview.supported ? (
-          <div className="mt-4 rounded-xl border border-info-border bg-info-bg p-4">
+          <div className="mt-4 rounded-xl border border-border bg-foreground/[0.03] p-4">
             <div className="mb-3 flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-info-text" />
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-info-text">Query Cost Preview</span>
+              <Gauge className="h-4 w-4 text-primary" />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Query Cost Preview</span>
             </div>
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <Badge variant="info">
@@ -300,19 +312,21 @@ const SqlPreview = ({ response, messageId, onSuggestionsLoaded, onSqlExecuted, o
         )
       )}
 
-      {/* Suggested Follow-up Questions */}
+      {/* Suggested Follow-up Questions — a supplementary content panel, not a
+          warning, so it takes the same neutral treatment as Explanation/Cost
+          Preview above rather than the warning color. */}
       {suggestions.length > 0 && (
-        <div className="mt-4 rounded-xl border border-warning-border bg-warning-bg p-4">
+        <div className="mt-4 rounded-xl border border-border bg-foreground/[0.03] p-4">
           <div className="mb-3 flex items-center gap-2">
-            <Send className="h-4 w-4 text-warning-text" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-warning-text">Suggested Follow-up Questions</span>
+            <Send className="h-4 w-4 text-primary" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Suggested Follow-up Questions</span>
           </div>
           <div className="space-y-2">
             {suggestions.map((suggestion, index) => (
               <button
                 key={index}
                 onClick={() => onSuggestionClick?.(suggestion)}
-                className="w-full cursor-pointer rounded-lg border border-warning-border/30 bg-background/40 p-3 text-left text-sm text-foreground/85 transition-all hover:border-warning-border hover:bg-warning-bg/40"
+                className="w-full cursor-pointer rounded-lg border border-border bg-background/40 p-3 text-left text-sm text-foreground/85 transition-all hover:border-primary/40 hover:bg-primary/5"
               >
                 {suggestion}
               </button>

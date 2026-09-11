@@ -393,7 +393,7 @@ const HistoryPage = () => {
                 <button onClick={() => handleSessionClick(session)} className="flex-1 p-5 text-left transition-colors hover:bg-foreground/[0.03]">
                   <div className="flex items-center justify-between">
                     <div className="flex min-w-0 flex-1 items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--chart-2)_20%,transparent)] bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] transition-all group-hover:shadow-[0_0_15px_color-mix(in_srgb,var(--chart-2)_25%,transparent)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--chart-2)_20%,transparent)] bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] transition-all group-hover:glow-cyan">
                         <MessageSquare className="h-5 w-5 text-[var(--chart-2)]" />
                       </div>
                       <div className="min-w-0 flex-1">

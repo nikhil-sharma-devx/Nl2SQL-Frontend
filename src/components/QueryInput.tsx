@@ -149,7 +149,7 @@ const QueryInput = ({
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card/70 p-3 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+    <div className="shadow-depth-2 rounded-2xl border border-border bg-card/70 p-3 backdrop-blur-xl">
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="relative" ref={dropdownRef}>
           <textarea
@@ -232,7 +232,7 @@ const QueryInput = ({
                 id="dialect-select"
                 value={dialect}
                 onChange={(e) => onDialectChange(e.target.value)}
-                className="cursor-pointer bg-transparent text-sm font-medium text-foreground focus:outline-none [&>option]:bg-popover [&>option]:text-foreground"
+                className="cursor-pointer bg-transparent text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 rounded [&>option]:bg-popover [&>option]:text-foreground"
                 disabled={isLoading}
               >
                 {dialects.map((d) => (
@@ -255,7 +255,7 @@ const QueryInput = ({
               className={cn(
                 'group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
                 execute
-                  ? 'border-primary/40 bg-primary/10 text-primary shadow-[0_0_14px_color-mix(in_srgb,var(--primary)_18%,transparent)]'
+                  ? 'glow-primary-xs border-primary/40 bg-primary/10 text-primary'
                   : 'border-border bg-background/60 text-muted-foreground hover:text-foreground',
               )}
             >
